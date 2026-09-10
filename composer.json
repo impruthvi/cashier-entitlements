@@ -1,0 +1,59 @@
+{
+    "name": "impruthvi/cashier-entitlements",
+    "description": "Local entitlement resolution and background billing reconciliation for Laravel Cashier (under development).",
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": "^8.3",
+        "illuminate/contracts": "^12.0 || ^13.0",
+        "illuminate/support": "^12.0 || ^13.0",
+        "spatie/laravel-package-tools": "^1.16"
+    },
+    "require-dev": {
+        "larastan/larastan": "^3.0",
+        "laravel/cashier": "^16.8",
+        "laravel/pennant": "^1.26",
+        "laravel/pint": "^1.14",
+        "masterix21/laravel-entitlements": "1.3.1",
+        "orchestra/testbench": "^10.0 || ^11.0",
+        "pestphp/pest": "^4.0",
+        "pestphp/pest-plugin-laravel": "^4.0"
+    },
+    "suggest": {
+        "laravel/cashier": "Billing integration planned after M0; currently tested as a compatibility dependency.",
+        "laravel/pennant": "Optional feature-store integration; M0 contains feasibility probes only.",
+        "masterix21/laravel-entitlements": "Optional license integration; M0 contains feasibility probes only."
+    },
+    "autoload": {
+        "psr-4": {
+            "Impruthvi\\CashierEntitlements\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Impruthvi\\CashierEntitlements\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Impruthvi\\CashierEntitlements\\CashierEntitlementsServiceProvider"
+            ]
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/pest",
+        "analyse": "vendor/bin/phpstan analyse --memory-limit=512M",
+        "format": "vendor/bin/pint",
+        "format:check": "vendor/bin/pint --test",
+        "check": ["@test", "@analyse", "@format:check"]
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

@@ -1,0 +1,64 @@
+# Cashier Entitlements
+
+Local entitlement resolution and background billing reconciliation for Laravel Cashier.
+
+**Status: M0 development skeleton, not a released authorization package.** Only the
+service provider and namespaced configuration ship today. There is no resolver,
+Stripe reconciliation, usage ledger, production adapter, or package migration yet.
+Setting `enabled` to `true` does not implement those capabilities.
+
+The intended purpose is to answer what an organization can access from local,
+successfully applied billing facts, and repair that projection in background work.
+It does not replace Cashier checkout, manage RBAC, or call Stripe during authorization.
+
+## Development
+
+Requires PHP 8.3+. The M0 tests exercise Laravel 12 and 13 using SQLite.
+
+```sh
+composer install
+composer check
+bash scripts/test-matrix.sh 12 all lowest
+bash scripts/test-matrix.sh 13 all highest
+bash scripts/test-matrix.sh 12 none highest
+bash scripts/test-consumer.sh
+```
+
+`test-matrix.sh` accepts Laravel `12|13`, optional dependencies
+`all|none|cashier|masterix|pennant`, and dependency preference `lowest|highest`.
+Each run resolves into a separate gitignored `build/` directory, preserving your
+development dependencies. `PHP_BINARY` and `COMPOSER_BINARY` can select executables.
+Lockfiles remain there for reproduction; GitHub CI uploads its matrix lockfiles.
+
+Cashier, Masterix and Pennant are development-only compatibility dependencies.
+None is required to boot the runtime skeleton. The consumer smoke test verifies
+auto-discovery and config publishing without those packages or Testbench installed.
+It uses a local Composer path repository; no Packagist release is implied.
+
+Configuration is published under `cashier-entitlements`, not Masterix's `entitlements`:
+
+```sh
+php artisan vendor:publish --tag=cashier-entitlements-config
+```
+
+## Compatibility boundaries
+
+Read [M0 results and open gates](docs/m0-compatibility.md) before building an adapter.
+Passing characterization tests document upstream behavior, including unsafe behavior;
+they are not proof of a production-ready integration.
+
+- Masterix assignment and consumption are not idempotent. Over-capacity downgrades
+  fail while the previous allowance remains active. Its production adapter remains gated.
+- Pennant caches values above a custom driver. Explicit evaluation boundaries must
+  flush that cache. Numeric `value()` is distinct from boolean `active()`.
+- Cashier's `active()` is not the future entitlement policy.
+
+The test-only driver in `tests/Support` is not exported through runtime autoloading.
+No optional provider or Pennant store is registered automatically by this package.
+
+## Next milestone
+
+M1: typed billing facts and deterministic access/price-mapping policy, with the full
+status and mapping test matrix. Production adapters come later, after their safety gates.
+
+MIT licensed; see [LICENSE.md](LICENSE.md).

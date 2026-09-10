@@ -1,0 +1,58 @@
+name: Tests
+
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  compatibility:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-latest, php: '8.3', laravel: '12', optional: all, dependencies: lowest}
+          - {os: ubuntu-latest, php: '8.3', laravel: '12', optional: all, dependencies: highest}
+          - {os: ubuntu-latest, php: '8.3', laravel: '13', optional: all, dependencies: lowest}
+          - {os: ubuntu-latest, php: '8.3', laravel: '13', optional: all, dependencies: highest}
+          - {os: ubuntu-latest, php: '8.4', laravel: '12', optional: all, dependencies: highest}
+          - {os: ubuntu-latest, php: '8.4', laravel: '13', optional: all, dependencies: highest}
+          - {os: ubuntu-latest, php: '8.5', laravel: '13', optional: all, dependencies: highest}
+          - {os: ubuntu-latest, php: '8.3', laravel: '12', optional: none, dependencies: highest}
+          - {os: ubuntu-latest, php: '8.3', laravel: '12', optional: cashier, dependencies: highest}
+          - {os: ubuntu-latest, php: '8.3', laravel: '12', optional: masterix, dependencies: highest}
+          - {os: ubuntu-latest, php: '8.3', laravel: '12', optional: pennant, dependencies: highest}
+          - {os: macos-latest, php: '8.3', laravel: '13', optional: all, dependencies: highest}
+    runs-on: ${{ matrix.os }}
+    name: PHP ${{ matrix.php }} / Laravel ${{ matrix.laravel }} / ${{ matrix.optional }} / ${{ matrix.dependencies }} / ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, pdo_sqlite, intl, bcmath
+          coverage: none
+          tools: composer:v2
+      - run: bash scripts/test-matrix.sh '${{ matrix.laravel }}' '${{ matrix.optional }}' '${{ matrix.dependencies }}'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: locks-${{ matrix.os }}-${{ matrix.php }}-${{ matrix.laravel }}-${{ matrix.optional }}-${{ matrix.dependencies }}
+          path: build/*/composer.lock
+  quality:
+    runs-on: ubuntu-latest
+    env:
+      COMPOSER_ROOT_VERSION: dev-main
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_sqlite, intl, bcmath
+          coverage: none
+          tools: composer:v2
+      - run: composer validate --strict
+      - run: composer update --no-interaction --prefer-dist
+      - run: composer analyse
+      - run: composer format:check
+      - run: bash scripts/test-consumer.sh

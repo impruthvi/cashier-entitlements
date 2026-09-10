@@ -1,0 +1,14 @@
+{
+    "name": "cashier-entitlements/consumer-smoke",
+    "type": "project",
+    "require": {
+        "php": "^8.3",
+        "laravel/framework": "^12.0 || ^13.0",
+        "impruthvi/cashier-entitlements": "dev-main"
+    },
+    "repositories": [
+        {"type": "path", "url": "../..", "options": {"symlink": true, "versions": {"impruthvi/cashier-entitlements": "dev-main"}}}
+    ],
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
