@@ -3,6 +3,8 @@ includes:
 
 parameters:
     level: 8
+    # PHP does not enforce array element types; keep runtime boundary validation.
+    treatPhpDocTypesAsCertain: false
     paths:
         - src
     tmpDir: .phpstan.cache

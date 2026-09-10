@@ -2,10 +2,14 @@
 
 Local entitlement resolution and background billing reconciliation for Laravel Cashier.
 
-**Status: M0 development skeleton, not a released authorization package.** Only the
-service provider and namespaced configuration ship today. There is no resolver,
-Stripe reconciliation, usage ledger, production adapter, or package migration yet.
-Setting `enabled` to `true` does not implement those capabilities.
+**Status: M1 development build, not a released authorization package.** The package
+includes bootstrapping, typed billing facts, a status policy and a price mapper.
+There is no applied-grant resolver, Stripe reconciliation, usage ledger, production
+adapter, or package migration yet. Setting `enabled` to `true` does not implement
+those capabilities.
+
+See [the M1 API and rules](docs/m1-billing.md) for local, side-effect-free calculations.
+Results describe a supplied snapshot; they are not automatically applied access grants.
 
 The intended purpose is to answer what an organization can access from local,
 successfully applied billing facts, and repair that projection in background work.
@@ -13,7 +17,8 @@ It does not replace Cashier checkout, manage RBAC, or call Stripe during authori
 
 ## Development
 
-Requires PHP 8.3+. The M0 tests exercise Laravel 12 and 13 using SQLite.
+Requires PHP 8.3+. Integration tests exercise Laravel 12 and 13 using SQLite;
+M1's billing calculations run without a Laravel application or database.
 
 ```sh
 composer install
@@ -58,7 +63,7 @@ No optional provider or Pennant store is registered automatically by this packag
 
 ## Next milestone
 
-M1: typed billing facts and deterministic access/price-mapping policy, with the full
-status and mapping test matrix. Production adapters come later, after their safety gates.
+M2: complete provider reads, comparison with local facts and diagnostic dry-run.
+Production adapters come later, after their safety gates.
 
 MIT licensed; see [LICENSE.md](LICENSE.md).
