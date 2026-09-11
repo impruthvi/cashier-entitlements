@@ -12,6 +12,16 @@ it('loads its config without replacing an application entitlement catalog', func
         ->and(config('entitlements.type_enum'))->toBe('App\\Enums\\LicenseType');
 });
 
+it('keeps the diagnostic command available without loading an optional integration', function () {
+    if (! class_exists(Cashier::class)) {
+        $this->artisan('entitlements:reconcile', ['--json' => true])
+            ->expectsOutputToContain('cashier_not_installed')->assertExitCode(2);
+    } else {
+        $this->artisan('entitlements:reconcile', ['--apply' => true, '--json' => true])
+            ->expectsOutputToContain('apply_not_supported')->assertExitCode(2);
+    }
+});
+
 it('registers a publishable config without registering a Pennant store', function () {
     $paths = ServiceProvider::pathsToPublish(
         CashierEntitlementsServiceProvider::class,

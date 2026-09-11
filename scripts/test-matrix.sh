@@ -25,7 +25,7 @@ export ENTITLEMENTS_OPTIONAL_MODE="$mode"
 test_paths=(tests/Core tests/Billing)
 if [[ "$mode" == all || "$mode" == cashier ]]; then
     "$php_binary" "$composer_binary" require --dev --no-update --no-interaction 'laravel/cashier:^16.8'
-    test_paths+=(tests/Compatibility/CashierTest.php)
+    test_paths+=(tests/Compatibility/CashierTest.php tests/Stripe tests/Reconciliation tests/Commands)
 fi
 if [[ "$mode" == all || "$mode" == masterix ]]; then
     "$php_binary" "$composer_binary" require --dev --no-update --no-interaction 'masterix21/laravel-entitlements:1.3.1'

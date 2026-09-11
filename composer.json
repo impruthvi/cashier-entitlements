@@ -20,7 +20,7 @@
         "pestphp/pest-plugin-laravel": "^4.0"
     },
     "suggest": {
-        "laravel/cashier": "Billing integration planned after M0; currently tested as a compatibility dependency.",
+        "laravel/cashier": "Required for the optional M2 read-only billing projector and diagnostic commands (^16.8).",
         "laravel/pennant": "Optional feature-store integration; M0 contains feasibility probes only.",
         "masterix21/laravel-entitlements": "Optional license integration; M0 contains feasibility probes only."
     },

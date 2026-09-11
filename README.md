@@ -2,14 +2,16 @@
 
 Local entitlement resolution and background billing reconciliation for Laravel Cashier.
 
-**Status: M1 development build, not a released authorization package.** The package
-includes bootstrapping, typed billing facts, a status policy and a price mapper.
-There is no applied-grant resolver, Stripe reconciliation, usage ledger, production
-adapter, or package migration yet. Setting `enabled` to `true` does not implement
-those capabilities.
+**Status: M2 development build, not a released authorization package.** The package
+includes typed billing facts, policy/price mapping, complete read-only Stripe intake,
+a Cashier local projector, and owner/account diagnostic dry-runs. There is no
+applied-grant resolver, automatic repair, usage ledger, production adapter, or package
+migration yet. Setting `enabled` to `true` does not implement those capabilities.
 
 See [the M1 API and rules](docs/m1-billing.md) for local, side-effect-free calculations.
 Results describe a supplied snapshot; they are not automatically applied access grants.
+See [M2 setup, commands and safety boundaries](docs/m2-diagnostics.md) to compare
+current Stripe subscriptions with Cashier without changing customer access.
 
 The intended purpose is to answer what an organization can access from local,
 successfully applied billing facts, and repair that projection in background work.
@@ -35,8 +37,9 @@ Each run resolves into a separate gitignored `build/` directory, preserving your
 development dependencies. `PHP_BINARY` and `COMPOSER_BINARY` can select executables.
 Lockfiles remain there for reproduction; GitHub CI uploads its matrix lockfiles.
 
-Cashier, Masterix and Pennant are development-only compatibility dependencies.
-None is required to boot the runtime skeleton. The consumer smoke test verifies
+Cashier is optional at installation but required for the M2 command/projector;
+its Stripe SDK powers provider reads. Masterix and Pennant remain optional feasibility
+dependencies. None is required to boot the package. The consumer smoke test verifies
 auto-discovery and config publishing without those packages or Testbench installed.
 It uses a local Composer path repository; no Packagist release is implied.
 
@@ -63,7 +66,8 @@ No optional provider or Pennant store is registered automatically by this packag
 
 ## Next milestone
 
-M2: complete provider reads, comparison with local facts and diagnostic dry-run.
+M3: durable refresh work, generation fencing, atomic native apply and local resolution.
+Resumable operational sweeps and the full health/doctor surface remain later work.
 Production adapters come later, after their safety gates.
 
 MIT licensed; see [LICENSE.md](LICENSE.md).

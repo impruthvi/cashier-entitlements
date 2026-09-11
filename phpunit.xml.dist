@@ -7,6 +7,9 @@
     <testsuites>
         <testsuite name="Core"><directory>tests/Core</directory></testsuite>
         <testsuite name="Billing"><directory>tests/Billing</directory></testsuite>
+        <testsuite name="Stripe"><directory>tests/Stripe</directory></testsuite>
+        <testsuite name="Reconciliation"><directory>tests/Reconciliation</directory></testsuite>
+        <testsuite name="Commands"><directory>tests/Commands</directory></testsuite>
         <testsuite name="Compatibility"><directory>tests/Compatibility</directory></testsuite>
     </testsuites>
     <source><include><directory>src</directory></include></source>
