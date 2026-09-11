@@ -1,0 +1,45 @@
+<?php
+
+declare(strict_types=1);
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('cashier_entitlement_states', function (Blueprint $table) {
+            $table->char('id', 64)->primary();
+            $table->text('owner_identity');
+            $table->bigInteger('requested_sequence')->default(0);
+            $table->bigInteger('completed_sequence')->default(0);
+            $table->bigInteger('generation')->default(0);
+            $table->bigInteger('lease_until')->default(0);
+            $table->bigInteger('retry_at')->default(0);
+            $table->bigInteger('requested_at')->default(0);
+            $table->bigInteger('applied_version')->default(0);
+            $table->char('applied_hash', 64)->nullable();
+            $table->string('catalog_version')->nullable();
+            $table->text('projection')->nullable();
+            $table->longText('observations')->nullable();
+            $table->bigInteger('observed_at')->nullable();
+            $table->bigInteger('last_success_at')->nullable();
+            $table->string('last_error')->nullable();
+            $table->index(['retry_at', 'lease_until']);
+        });
+        Schema::create('cashier_entitlement_receipts', function (Blueprint $table) {
+            $table->char('id', 64)->primary();
+            $table->char('owner_id', 64)->index();
+            $table->string('event_id');
+            $table->bigInteger('received_at');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('cashier_entitlement_receipts');
+        Schema::dropIfExists('cashier_entitlement_states');
+    }
+};

@@ -2,16 +2,18 @@
 
 Local entitlement resolution and background billing reconciliation for Laravel Cashier.
 
-**Status: M2 development build, not a released authorization package.** The package
-includes typed billing facts, policy/price mapping, complete read-only Stripe intake,
-a Cashier local projector, and owner/account diagnostic dry-runs. There is no
-applied-grant resolver, automatic repair, usage ledger, production adapter, or package
-migration yet. Setting `enabled` to `true` does not implement those capabilities.
+**Status: M3 development build, not a production release.** The package includes
+typed billing rules, complete Stripe intake, Cashier diagnostic dry-runs, durable
+refresh requests, fenced queue workers, atomic native application and local-only
+access resolution. Application is disabled until explicitly configured. Usage,
+overrides, production Masterix/Pennant adapters and account-wide recovery remain later work.
 
 See [the M1 API and rules](docs/m1-billing.md) for local, side-effect-free calculations.
 Results describe a supplied snapshot; they are not automatically applied access grants.
 See [M2 setup, commands and safety boundaries](docs/m2-diagnostics.md) to compare
 current Stripe subscriptions with Cashier without changing customer access.
+See [M3 installation, refresh and local resolution](docs/m3-refresh.md) before enabling
+native application. You must choose a freshness policy and schedule recovery/refresh work.
 
 The intended purpose is to answer what an organization can access from local,
 successfully applied billing facts, and repair that projection in background work.
@@ -29,6 +31,7 @@ bash scripts/test-matrix.sh 12 all lowest
 bash scripts/test-matrix.sh 13 all highest
 bash scripts/test-matrix.sh 12 none highest
 bash scripts/test-consumer.sh
+bash scripts/test-postgres.sh # Requires local PostgreSQL binaries and pdo_pgsql.
 ```
 
 `test-matrix.sh` accepts Laravel `12|13`, optional dependencies
@@ -37,10 +40,11 @@ Each run resolves into a separate gitignored `build/` directory, preserving your
 development dependencies. `PHP_BINARY` and `COMPOSER_BINARY` can select executables.
 Lockfiles remain there for reproduction; GitHub CI uploads its matrix lockfiles.
 
-Cashier is optional at installation but required for the M2 command/projector;
+Cashier is optional at installation but required for billing diagnostics and refresh;
 its Stripe SDK powers provider reads. Masterix and Pennant remain optional feasibility
 dependencies. None is required to boot the package. The consumer smoke test verifies
-auto-discovery and config publishing without those packages or Testbench installed.
+auto-discovery, config/migration publishing, native application and local resolution
+without those packages or Testbench installed.
 It uses a local Composer path repository; no Packagist release is implied.
 
 Configuration is published under `cashier-entitlements`, not Masterix's `entitlements`:
@@ -66,7 +70,7 @@ No optional provider or Pennant store is registered automatically by this packag
 
 ## Next milestone
 
-M3: durable refresh work, generation fencing, atomic native apply and local resolution.
+M4: native usage, billing periods, admission checks and audited overrides.
 Resumable operational sweeps and the full health/doctor surface remain later work.
 Production adapters come later, after their safety gates.
 

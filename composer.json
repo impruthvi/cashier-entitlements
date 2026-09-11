@@ -6,6 +6,7 @@
     "require": {
         "php": "^8.3",
         "illuminate/contracts": "^12.0 || ^13.0",
+        "illuminate/database": "^12.0 || ^13.0",
         "illuminate/support": "^12.0 || ^13.0",
         "spatie/laravel-package-tools": "^1.16"
     },
@@ -20,7 +21,7 @@
         "pestphp/pest-plugin-laravel": "^4.0"
     },
     "suggest": {
-        "laravel/cashier": "Required for the optional M2 read-only billing projector and diagnostic commands (^16.8).",
+        "laravel/cashier": "Required for billing diagnostics and background Stripe reconciliation (^16.8).",
         "laravel/pennant": "Optional feature-store integration; M0 contains feasibility probes only.",
         "masterix21/laravel-entitlements": "Optional license integration; M0 contains feasibility probes only."
     },

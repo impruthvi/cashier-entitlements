@@ -10,6 +10,9 @@
         <testsuite name="Stripe"><directory>tests/Stripe</directory></testsuite>
         <testsuite name="Reconciliation"><directory>tests/Reconciliation</directory></testsuite>
         <testsuite name="Commands"><directory>tests/Commands</directory></testsuite>
+        <testsuite name="Resolution"><directory>tests/Resolution</directory></testsuite>
+        <testsuite name="Integration"><directory>tests/Integration</directory></testsuite>
+        <testsuite name="Concurrency"><directory>tests/Concurrency</directory></testsuite>
         <testsuite name="Compatibility"><directory>tests/Compatibility</directory></testsuite>
     </testsuites>
     <source><include><directory>src</directory></include></source>

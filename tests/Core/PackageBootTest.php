@@ -18,7 +18,7 @@ it('keeps the diagnostic command available without loading an optional integrati
             ->expectsOutputToContain('cashier_not_installed')->assertExitCode(2);
     } else {
         $this->artisan('entitlements:reconcile', ['--apply' => true, '--json' => true])
-            ->expectsOutputToContain('apply_not_supported')->assertExitCode(2);
+            ->expectsOutputToContain('application_disabled')->assertExitCode(2);
     }
 });
 

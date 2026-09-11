@@ -14,7 +14,7 @@ php_binary="${PHP_BINARY:-php}"
 composer_binary="${COMPOSER_BINARY:-$(command -v composer)}"
 mkdir -p "$package_root/build"
 matrix_dir="$(mktemp -d "$package_root/build/laravel-${laravel}-${mode}-${preference}.XXXXXX")"
-cp -R "$package_root/src" "$package_root/config" "$package_root/tests" "$matrix_dir/"
+cp -R "$package_root/src" "$package_root/config" "$package_root/tests" "$package_root/database" "$matrix_dir/"
 cp "$package_root/composer.json" "$package_root/phpunit.xml.dist" "$matrix_dir/"
 cd "$matrix_dir"
 export COMPOSER_ROOT_VERSION=dev-main
@@ -22,10 +22,10 @@ export ENTITLEMENTS_OPTIONAL_MODE="$mode"
 
 "$php_binary" "$composer_binary" remove --dev --no-update --no-interaction laravel/cashier laravel/pennant masterix21/laravel-entitlements
 "$php_binary" "$composer_binary" require --dev --no-update --no-interaction "laravel/framework:^${laravel}.0" "orchestra/testbench:^${testbench}.0"
-test_paths=(tests/Core tests/Billing)
+test_paths=(tests/Core tests/Billing tests/Resolution)
 if [[ "$mode" == all || "$mode" == cashier ]]; then
     "$php_binary" "$composer_binary" require --dev --no-update --no-interaction 'laravel/cashier:^16.8'
-    test_paths+=(tests/Compatibility/CashierTest.php tests/Stripe tests/Reconciliation tests/Commands)
+    test_paths+=(tests/Compatibility/CashierTest.php tests/Stripe tests/Reconciliation tests/Commands tests/Integration)
 fi
 if [[ "$mode" == all || "$mode" == masterix ]]; then
     "$php_binary" "$composer_binary" require --dev --no-update --no-interaction 'masterix21/laravel-entitlements:1.3.1'

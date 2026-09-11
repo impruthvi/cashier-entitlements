@@ -9,8 +9,10 @@ use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Impruthvi\CashierEntitlements\Billing\PriceCatalog;
+use Impruthvi\CashierEntitlements\Persistence\NativeStateStore;
 use Impruthvi\CashierEntitlements\Reconciliation\DryRunReconciler;
 use Impruthvi\CashierEntitlements\Reconciliation\ReadFailure;
+use Impruthvi\CashierEntitlements\Reconciliation\RefreshManager;
 use Impruthvi\CashierEntitlements\Stripe\StripeSubscriptionSource;
 use Laravel\Cashier\Cashier;
 
@@ -18,13 +20,18 @@ final class ReconcileCommand extends Command
 {
     protected $signature = 'entitlements:reconcile {--owner-type=} {--owner=} {--all} {--test-clock=} {--dry-run} {--apply} {--json}';
 
-    protected $description = 'Compare current Stripe subscriptions with Cashier without changing access';
+    protected $description = 'Compare Stripe with Cashier, or explicitly apply native access for one owner';
 
     public function handle(): int
     {
         try {
             if ($this->option('apply')) {
-                throw new ReadFailure('apply_not_supported');
+                if (config('cashier-entitlements.enabled') !== true) {
+                    throw new ReadFailure('application_disabled');
+                }
+                if ($this->option('dry-run') || $this->option('all') || $this->option('test-clock') !== null) {
+                    throw new ReadFailure('unsupported_apply_scope');
+                }
             }
             if (! class_exists(Cashier::class)) {
                 throw new ReadFailure('cashier_not_installed');
@@ -64,9 +71,20 @@ final class ReconcileCommand extends Command
                 if (! $owner instanceof Model) {
                     throw new ReadFailure('unknown_owner');
                 }
-                $report = $this->laravel->make(DryRunReconciler::class)->run(
-                    $owner, $this->laravel->make(PriceCatalog::class), new DateTimeImmutable, $type,
-                );
+                if ($this->option('apply')) {
+                    $manager = $this->laravel->make(RefreshManager::class);
+                    $reference = $manager->request($owner, dispatch: false);
+                    $result = $manager->refresh($reference);
+                    $state = $this->laravel->make(NativeStateStore::class)->state($reference);
+                    $done = $state !== null && $state['completed_sequence'] >= $state['requested_sequence'];
+                    $report = ['schema_version' => 1, 'mode' => 'apply', 'complete' => $done, 'result' => $result,
+                        'owner' => get_object_vars($reference), 'applied_version' => $state['applied_version'] ?? 0,
+                        'errors' => [], 'exit_code' => $done ? 0 : 1];
+                } else {
+                    $report = $this->laravel->make(DryRunReconciler::class)->run(
+                        $owner, $this->laravel->make(PriceCatalog::class), new DateTimeImmutable, $type,
+                    );
+                }
             }
         } catch (ReadFailure $exception) {
             $report = $this->errorReport($exception->getMessage());
@@ -130,7 +148,7 @@ final class ReconcileCommand extends Command
     /** @return array{schema_version: int, mode: string, complete: bool, proposed_decision: null, differences: array{}, errors: list<string>, exit_code: int} */
     private function errorReport(string $error): array
     {
-        return ['schema_version' => 1, 'mode' => 'dry-run', 'complete' => false,
+        return ['schema_version' => 1, 'mode' => $this->option('apply') ? 'apply' : 'dry-run', 'complete' => false,
             'proposed_decision' => null, 'differences' => [], 'errors' => [$error], 'exit_code' => 2];
     }
 }

@@ -1,5 +1,10 @@
 # M2: read-only provider comparison
 
+This records the M2 diagnostic milestone. In the current M3 build, invocations without
+`--apply` retain these read-only guarantees; explicit owner application, jobs and storage
+are documented in [M3 refresh](m3-refresh.md). References below to apply refusal or
+missing migrations describe M2, not the current package.
+
 M2 reads current Stripe subscriptions, normalizes M1 billing facts, reads the local
 Cashier projection and reports differences. It does **not** apply grants, repair
 Cashier, mutate Stripe, persist audit metadata, register webhooks/jobs, or change

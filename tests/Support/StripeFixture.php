@@ -29,6 +29,9 @@ final class StripeFixture implements ClientInterface
             throw new \RuntimeException('Unexpected HTTP request');
         }
         $response = array_shift($this->responses);
+        if ($response instanceof \Closure) {
+            $response = $response();
+        }
         if ($response instanceof \Throwable) {
             throw $response;
         }

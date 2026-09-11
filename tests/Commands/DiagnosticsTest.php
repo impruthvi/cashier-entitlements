@@ -139,7 +139,7 @@ it('refuses apply, unknown owners and unregistered class names before provider r
     expect(json_decode(Artisan::output(), true, flags: JSON_THROW_ON_ERROR)['errors'])->toBe([$error]);
     expect($fixture->requests)->toBe([]);
 })->with([
-    'apply' => [['--apply' => true], 'apply_not_supported'],
+    'apply' => [['--apply' => true], 'application_disabled'],
     'no owner' => [[], 'explicit_owner_required'],
     'unknown owner' => [['--owner-type' => 'organization', '--owner' => 'missing'], 'unknown_owner'],
     'class injection' => [['--owner-type' => stdClass::class, '--owner' => '1'], 'unregistered_owner_type'],

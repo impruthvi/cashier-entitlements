@@ -6,6 +6,21 @@ permissions:
   contents: read
 
 jobs:
+  postgres-concurrency:
+    runs-on: ubuntu-latest
+    env:
+      COMPOSER_ROOT_VERSION: dev-main
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_sqlite, pdo_pgsql, intl, bcmath
+          coverage: none
+          tools: composer:v2
+      - run: sudo apt-get update && sudo apt-get install -y postgresql postgresql-client libpq-dev
+      - run: composer update --no-interaction --prefer-dist
+      - run: bash scripts/test-postgres.sh
   compatibility:
     strategy:
       fail-fast: false

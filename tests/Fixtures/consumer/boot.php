@@ -9,6 +9,8 @@ use Impruthvi\CashierEntitlements\Billing\OwnerReference;
 use Impruthvi\CashierEntitlements\Billing\PriceCatalog;
 use Impruthvi\CashierEntitlements\Billing\PriceMapper;
 use Impruthvi\CashierEntitlements\CashierEntitlementsServiceProvider;
+use Impruthvi\CashierEntitlements\Persistence\NativeStateStore;
+use Impruthvi\CashierEntitlements\Resolution\LocalResolver;
 use Laravel\Cashier\Cashier;
 use Laravel\Pennant\Feature;
 use LucaLongo\LaravelEntitlements\Entitlements;
@@ -42,4 +44,22 @@ if ($result->status !== DecisionStatus::Allowed || $result->allowances !== ['pro
     throw new RuntimeException('M1 billing calculation failed without optional dependencies.');
 }
 
-echo 'Consumer boot, auto-discovery, config publish and M1 billing calculation passed without optional dependencies or Testbench.'.PHP_EOL;
+config(['database.default' => 'sqlite', 'database.connections.sqlite' => [
+    'driver' => 'sqlite', 'database' => ':memory:', 'prefix' => '',
+], 'cashier-entitlements.freshness' => ['max_stale_age' => 60]]);
+if ($kernel->call('vendor:publish', ['--tag' => 'cashier-entitlements-migrations', '--force' => true]) !== 0
+    || $kernel->call('migrate', ['--force' => true]) !== 0) {
+    throw new RuntimeException('Native migration publish or execution failed.');
+}
+$catalog = new PriceCatalog('v1', [], ['projects' => 0]);
+$app->instance(PriceCatalog::class, $catalog);
+$owner = new OwnerReference('organization', 1, 'sqlite');
+$at = new DateTimeImmutable('2026-09-11T12:00:00Z');
+$store = $app->make(NativeStateStore::class);
+$store->request($owner, $at);
+if (! $store->complete($store->claim($owner, $at), $result, 'v1', $at, $at)
+    || $app->make(LocalResolver::class)->for($owner, $at)->all() !== ['projects' => 0]) {
+    throw new RuntimeException('Native apply or local resolution failed without optional dependencies.');
+}
+
+echo 'Consumer discovery, config/migration publishing, native apply and local resolution passed without optional dependencies or Testbench.'.PHP_EOL;
