@@ -168,5 +168,6 @@ processes cannot both consume a one-unit limit.
 No live Stripe account or production database was contacted. MySQL locking, production
 load and long-run counter growth remain unverified. Usage is not reported to Stripe metered
 billing, counters are never pruned, and there is no aggregate reporting or per-feature
-usage listing yet. M5 adds gated production Masterix and Pennant adapters; M6 covers
-operational sweeps, diagnostics and release readiness.
+usage listing yet. M5 adds gated production Masterix and Pennant adapters;
+[M6](m6-operations.md) adds the account sweep, the local doctor, scheduled convergence and
+the release gate. Stripe metered-usage reporting and counter pruning remain open after it.

@@ -25,7 +25,7 @@ export ENTITLEMENTS_OPTIONAL_MODE="$mode"
 test_paths=(tests/Core tests/Billing tests/Resolution tests/Usage tests/Overrides)
 if [[ "$mode" == all || "$mode" == cashier ]]; then
     "$php_binary" "$composer_binary" require --dev --no-update --no-interaction 'laravel/cashier:^16.8'
-    test_paths+=(tests/Compatibility/CashierTest.php tests/Stripe tests/Reconciliation tests/Commands tests/Integration)
+    test_paths+=(tests/Compatibility/CashierTest.php tests/Stripe tests/Reconciliation tests/Commands tests/Integration tests/Performance)
 fi
 if [[ "$mode" == all || "$mode" == masterix ]]; then
     "$php_binary" "$composer_binary" require --dev --no-update --no-interaction 'masterix21/laravel-entitlements:1.3.1'
@@ -44,6 +44,6 @@ if [[ "$preference" == lowest ]]; then update_flags+=(--prefer-lowest); fi
 "$php_binary" "$composer_binary" update "${update_flags[@]}"
 "$php_binary" "$composer_binary" check-platform-reqs
 "$php_binary" "$composer_binary" show --direct
-"$php_binary" vendor/bin/pest "${test_paths[@]}"
+"$php_binary" -d memory_limit=256M vendor/bin/pest "${test_paths[@]}"
 # Keep isolated lockfiles for reproducible investigation; build/ is gitignored.
 printf '\nMatrix evidence retained in %s\n' "$matrix_dir"

@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- M6 bounded, resumable account sweep that requests refreshes for owners whose observation is stale.
+- Durable audit runs with cursor and heartbeat; an interrupted scan stays incomplete and proves nothing.
+- Local-only `entitlements:doctor` reporting configuration, backlog, staleness and schedule health.
+- Optional scheduled convergence registered from cron expressions, ignored rather than fatal when unusable.
+- Dropped-event convergence suite against an independent provider oracle, plus scaling and secret-free proof.
+- Opt-in live Stripe sandbox contract suite; its credentials never enter pull-request CI.
+- M5 optional Masterix driver bound to one licence group per owner, with narrowed and documented support.
+- Optional read-only Pennant store over the local resolver, with explicit owner scope and snapshot semantics.
+- `EntitlementDriver` seam applied in the same transaction and connection as the native projection.
+- M4 calendar and billing-period usage meters with idempotent recording and transactional limit admission.
+- Append-only override ledger requiring reason, actor and expiry, consulted only when enabled.
 - M3 durable owner refresh requests, permanent event receipts and pending-work recovery.
 - Generation/lease fencing, after-commit queue dispatch and atomic native state/version application.
 - Local-only boolean/finite/unlimited resolution with explicit freshness and exact expiry checks.

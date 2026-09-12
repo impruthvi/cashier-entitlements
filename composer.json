@@ -43,11 +43,12 @@
         }
     },
     "scripts": {
-        "test": "vendor/bin/pest",
+        "test": "@php -d memory_limit=256M vendor/bin/pest",
         "analyse": "vendor/bin/phpstan analyse --memory-limit=512M",
         "format": "vendor/bin/pint",
         "format:check": "vendor/bin/pint --test",
-        "check": ["@test", "@analyse", "@format:check"]
+        "check": ["@test", "@analyse", "@format:check"],
+        "release-gate": "bash scripts/release-gate.sh"
     },
     "config": {
         "sort-packages": true,

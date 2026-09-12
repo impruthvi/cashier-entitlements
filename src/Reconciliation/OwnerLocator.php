@@ -60,7 +60,18 @@ final readonly class OwnerLocator
             || $owner->providerContext !== $this->context || $owner->liveMode !== $this->liveMode) {
             throw new ReadFailure('owner_context_mismatch');
         }
-        $class = Relation::getMorphedModel($owner->type);
+
+        return $this->modelFor($owner->type);
+    }
+
+    /**
+     * Resolve a registered morph alias without needing a specific owner.
+     *
+     * @return class-string<Model>
+     */
+    public function modelFor(string $alias): string
+    {
+        $class = Relation::getMorphedModel($alias);
         if (! class_exists(Cashier::class) || $class === null || $class !== Cashier::$customerModel || ! is_subclass_of($class, Model::class)) {
             throw new ReadFailure('unregistered_owner_type');
         }

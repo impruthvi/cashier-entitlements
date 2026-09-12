@@ -1,6 +1,10 @@
 name: Tests
 
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  # The live Stripe contract suite is manual only, so its credentials never run on a pull request.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -71,3 +75,26 @@ jobs:
       - run: composer analyse
       - run: composer format:check
       - run: bash scripts/test-consumer.sh
+      - name: Refuse credential-shaped literals in shipped files
+        run: |
+          if grep -rnE "(sk|rk)_(live|test)_[A-Za-z0-9]{8,}" src config database README.md docs; then
+            echo "A credential-shaped literal is present in shipped files." >&2
+            exit 1
+          fi
+  stripe-contract:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    env:
+      COMPOSER_ROOT_VERSION: dev-main
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_sqlite, intl, bcmath
+          coverage: none
+          tools: composer:v2
+      - run: composer update --no-interaction --prefer-dist
+      - run: bash scripts/test-sandbox.sh
+        env:
+          CASHIER_ENTITLEMENTS_SANDBOX_KEY: ${{ secrets.CASHIER_ENTITLEMENTS_SANDBOX_KEY }}

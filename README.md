@@ -2,13 +2,14 @@
 
 Local entitlement resolution and background billing reconciliation for Laravel Cashier.
 
-**Status: M5 development build, not a production release.** The package includes
+**Status: M6 development build, not a production release.** The package includes
 typed billing rules, complete Stripe intake, Cashier diagnostic dry-runs, durable
 refresh requests, fenced queue workers, atomic native application, local-only access
 resolution, metered usage with transactional limit admission, an audited override
-ledger, an optional Masterix driver and an optional read-only Pennant store.
-Application is disabled until explicitly configured, and both adapters are off by
-default. Account-wide recovery, operational sweeps and the release gate remain later work.
+ledger, an optional Masterix driver, an optional read-only Pennant store, a bounded
+account sweep, a local health report and optional scheduled convergence. Application
+is disabled until explicitly configured, and both adapters are off by default.
+No version is tagged and nothing is published to Packagist.
 
 See [the M1 API and rules](docs/m1-billing.md) for local, side-effect-free calculations.
 Results describe a supplied snapshot; they are not automatically applied access grants.
@@ -21,6 +22,8 @@ limits in the same transaction as your domain write, and grant audited exception
 See [M5 Masterix and Pennant adapters](docs/m5-adapters.md) before enabling either one.
 Each is deliberately narrower than its upstream package, and Pennant reads a
 request-lifetime snapshot rather than strictly fresh state.
+See [M6 operations and convergence](docs/m6-operations.md) to run the account sweep that
+repairs owners no webhook ever mentioned, read local health, and schedule both.
 
 The intended purpose is to answer what an organization can access from local,
 successfully applied billing facts, and repair that projection in background work.
@@ -39,6 +42,16 @@ bash scripts/test-matrix.sh 13 all highest
 bash scripts/test-matrix.sh 12 none highest
 bash scripts/test-consumer.sh
 bash scripts/test-postgres.sh # Requires local PostgreSQL binaries and pdo_pgsql.
+composer release-gate         # Everything a release candidate must pass.
+```
+
+The ten-thousand-subscription scaling test needs more than PHP's 128M default;
+`composer test` and the matrix script both run with 256M. The live Stripe contract
+suite is opt-in and excluded from the default suite, so credentials never enter
+pull-request CI:
+
+```sh
+CASHIER_ENTITLEMENTS_SANDBOX_KEY=sk_test_... bash scripts/test-sandbox.sh
 ```
 
 `test-matrix.sh` accepts Laravel `12|13`, optional dependencies

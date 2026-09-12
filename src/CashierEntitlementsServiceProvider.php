@@ -4,23 +4,29 @@ declare(strict_types=1);
 
 namespace Impruthvi\CashierEntitlements;
 
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Database\Connection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Impruthvi\CashierEntitlements\Billing\PriceCatalog;
 use Impruthvi\CashierEntitlements\Bridges\Pennant\NativeDriver;
+use Impruthvi\CashierEntitlements\Commands\DoctorCommand;
 use Impruthvi\CashierEntitlements\Commands\ReconcileCommand;
 use Impruthvi\CashierEntitlements\Commands\RecoverCommand;
+use Impruthvi\CashierEntitlements\Commands\SweepCommand;
+use Impruthvi\CashierEntitlements\Diagnostics\Doctor;
 use Impruthvi\CashierEntitlements\Drivers\EntitlementDriver;
 use Impruthvi\CashierEntitlements\Drivers\Masterix\MasterixDriver;
 use Impruthvi\CashierEntitlements\Drivers\NativeOnlyDriver;
 use Impruthvi\CashierEntitlements\Listeners\QueueRefreshFromWebhook;
 use Impruthvi\CashierEntitlements\Overrides\NativeOverrides;
+use Impruthvi\CashierEntitlements\Persistence\AuditRunStore;
 use Impruthvi\CashierEntitlements\Persistence\NativeStateStore;
 use Impruthvi\CashierEntitlements\Reconciliation\CashierLocalProjector;
 use Impruthvi\CashierEntitlements\Reconciliation\OwnerLocator;
 use Impruthvi\CashierEntitlements\Reconciliation\ReadFailure;
 use Impruthvi\CashierEntitlements\Reconciliation\RefreshManager;
+use Impruthvi\CashierEntitlements\Reconciliation\SchedulePlan;
 use Impruthvi\CashierEntitlements\Resolution\FreshnessPolicy;
 use Impruthvi\CashierEntitlements\Resolution\LocalResolver;
 use Impruthvi\CashierEntitlements\Stripe\StripeSubscriptionSource;
@@ -36,19 +42,22 @@ final class CashierEntitlementsServiceProvider extends PackageServiceProvider
 {
     public function configurePackage(Package $package): void
     {
-        $package->name('cashier-entitlements')->hasConfigFile()->hasCommands([ReconcileCommand::class, RecoverCommand::class])
+        $package->name('cashier-entitlements')->hasConfigFile()->hasCommands([ReconcileCommand::class, RecoverCommand::class, SweepCommand::class, DoctorCommand::class])
             ->hasMigrations([
                 'create_cashier_entitlements_tables',
                 'create_cashier_entitlements_billing_periods_table',
                 'create_cashier_entitlements_usage_tables',
                 'create_cashier_entitlements_overrides_table',
                 'create_cashier_entitlements_driver_bindings_table',
+                'create_cashier_entitlements_audit_runs_table',
             ]);
     }
 
     public function packageRegistered(): void
     {
         $this->app->bind(NativeStateStore::class, fn () => new NativeStateStore($this->connection()));
+        $this->app->bind(AuditRunStore::class, fn () => new AuditRunStore($this->connection()));
+        $this->app->bind(Doctor::class, fn () => new Doctor($this->app, $this->connection(), $this->app->make(AuditRunStore::class)));
         $this->app->bind(OwnerLocator::class, fn () => new OwnerLocator($this->connection(), $this->context(), $this->liveMode()));
         $this->app->bind(FreshnessPolicy::class, function () {
             $policy = config('cashier-entitlements.freshness', []);
@@ -104,6 +113,34 @@ final class CashierEntitlementsServiceProvider extends PackageServiceProvider
         if (class_exists(WebhookHandled::class)) {
             Event::listen(WebhookHandled::class, QueueRefreshFromWebhook::class);
         }
+        $this->scheduleConvergence();
+    }
+
+    /**
+     * Register convergence work only when it is fully and validly configured.
+     *
+     * Booting must not throw on a partial schedule, or a misconfigured key would take the
+     * whole application down. `entitlements:doctor` reports the same configuration instead.
+     */
+    private function scheduleConvergence(): void
+    {
+        $plan = SchedulePlan::fromConfig(config('cashier-entitlements.schedule'));
+        if (! $plan->usable() || ! $this->app->runningInConsole()) {
+            return;
+        }
+        $this->callAfterResolving(Schedule::class, function (Schedule $scheduler) use ($plan): void {
+            if ($plan->sweep !== null) {
+                // Overlapping scans would fight over the same cursor and duplicate provider reads.
+                // No --json flag: the scheduler compiles a shell string, and a value-less
+                // option would be rendered with a value the command refuses to parse.
+                $scheduler->command('entitlements:sweep', ['--owner-type' => $plan->alias, '--limit' => $plan->limit,
+                    ...($plan->staleAfter === null ? [] : ['--stale-after' => $plan->staleAfter])])
+                    ->cron($plan->sweep)->withoutOverlapping();
+            }
+            if ($plan->recover !== null) {
+                $scheduler->command('entitlements:recover')->cron($plan->recover)->withoutOverlapping();
+            }
+        });
     }
 
     private function context(): string

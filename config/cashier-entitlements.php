@@ -19,4 +19,13 @@ return [
     'driver' => 'native',
     // Application plan key => Masterix plan key. Required for every plan the catalog can resolve.
     'masterix' => ['plans' => []],
+    // Scheduled convergence. Both entries need 'owner_type'; a null expression schedules nothing.
+    // Cron expressions only, so the schedule is explicit rather than inferred from a method name.
+    'schedule' => [
+        'owner_type' => null,
+        'sweep' => null,
+        'sweep_limit' => 100,
+        'stale_after' => null,
+        'recover' => null,
+    ],
 ];

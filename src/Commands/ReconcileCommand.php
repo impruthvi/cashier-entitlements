@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Impruthvi\CashierEntitlements\Commands;
 
-use DateTimeImmutable;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Support\Facades\Date;
 use Impruthvi\CashierEntitlements\Billing\PriceCatalog;
 use Impruthvi\CashierEntitlements\Persistence\NativeStateStore;
 use Impruthvi\CashierEntitlements\Reconciliation\DryRunReconciler;
@@ -82,7 +82,7 @@ final class ReconcileCommand extends Command
                         'errors' => [], 'exit_code' => $done ? 0 : 1];
                 } else {
                     $report = $this->laravel->make(DryRunReconciler::class)->run(
-                        $owner, $this->laravel->make(PriceCatalog::class), new DateTimeImmutable, $type,
+                        $owner, $this->laravel->make(PriceCatalog::class), Date::now()->toDateTimeImmutable(), $type,
                     );
                 }
             }
@@ -131,7 +131,7 @@ final class ReconcileCommand extends Command
                 $seen[$customer] = true;
             }
             $report = $this->laravel->make(DryRunReconciler::class)->run(
-                $owner, $this->laravel->make(PriceCatalog::class), new DateTimeImmutable, $type,
+                $owner, $this->laravel->make(PriceCatalog::class), Date::now()->toDateTimeImmutable(), $type,
             );
             $reports[] = $report;
             $exit = max($exit, $report['exit_code']);

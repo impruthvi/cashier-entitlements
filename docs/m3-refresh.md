@@ -90,11 +90,11 @@ Schedule::command('entitlements:recover --limit=100')->everyMinute()->withoutOve
 ```
 
 **Pending recovery does not discover missed events or refresh otherwise idle owners.**
-Until the M6 account sweep exists, the application must periodically enumerate its known
-owners and call `request()` at an interval comfortably shorter than `max_stale_age`.
-Size that work for provider limits and queue capacity. Without it, paid observations
-will become stale even when billing has not changed. Recovery does not self-register a
-scheduler task. Monitor backlog, observation age and errors; M6's doctor is not implemented.
+That is what [M6's account sweep](m6-operations.md) is for: it enumerates an owner scope and
+requests a refresh for every owner whose observation has gone stale. Run it at an interval
+comfortably shorter than `max_stale_age`, and size it for provider limits and queue
+capacity. Without it, paid observations become stale even when billing has not changed.
+`entitlements:doctor` reports backlog, observation age and failure reasons locally.
 
 Jobs use a 240-second timeout, three queue attempts, a 60-second retry backoff and a
 300-second database lease. Configure the queue's `retry_after`/visibility timeout longer
@@ -191,5 +191,6 @@ The workflow now includes this test, but has not been run remotely for these cha
 
 No live Stripe account or production database was contacted. MySQL locking, production
 load, resumable account apply, full health reporting and unattended missed-event convergence
-remain unverified/unimplemented. M4 adds usage/periods/admission/overrides; M5 adds gated
-production adapters; M6 covers operational sweeps and release readiness.
+remain unverified at this milestone. M4 adds usage/periods/admission/overrides; M5 adds
+gated production adapters; [M6](m6-operations.md) adds the account sweep, the local doctor,
+scheduled convergence and the release gate.

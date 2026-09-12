@@ -99,6 +99,21 @@ if (! $app->make(EntitlementDriver::class) instanceof NativeOnlyDriver
     throw new RuntimeException('Default entitlement driver or its binding table failed on a fresh install.');
 }
 
+// M6: the doctor must answer locally on an installation with no optional package at all,
+// and it must warn rather than claim health when nothing schedules convergence.
+if (! Schema::hasTable('cashier_entitlement_audit_runs')) {
+    throw new RuntimeException('Audit run table missing on a fresh install.');
+}
+if ($kernel->call('entitlements:doctor', ['--json' => true]) !== 1) {
+    throw new RuntimeException('Doctor did not warn about an installation without scheduled convergence.');
+}
+$doctor = json_decode($kernel->output(), true, flags: JSON_THROW_ON_ERROR);
+$statuses = array_column($doctor['checks'], 'status', 'name');
+if ($statuses['scheduled_convergence'] !== 'warn' || $statuses['price_catalog'] !== 'ok'
+    || $doctor['state']['owners'] !== 1 || $doctor['state']['pending'] !== 0 || $doctor['state']['failing'] !== 0) {
+    throw new RuntimeException('Doctor reported an unexpected local state on a fresh install.');
+}
+
 $overrides->revoke($owner, $grant, 'smoke complete', 'script', $at->modify('+1 hour'));
 $history = $overrides->history($owner);
 if ($resolver->for($owner, $at->modify('+1 hour'))->limit('projects') !== 0 || count($history) !== 2) {

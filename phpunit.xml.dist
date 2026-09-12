@@ -16,6 +16,9 @@
         <testsuite name="Overrides"><directory>tests/Overrides</directory></testsuite>
         <testsuite name="Concurrency"><directory>tests/Concurrency</directory></testsuite>
         <testsuite name="Compatibility"><directory>tests/Compatibility</directory></testsuite>
+        <!-- Needs memory_limit above PHP's 128M default; composer test and the matrix set 256M. -->
+        <testsuite name="Performance"><directory>tests/Performance</directory></testsuite>
+        <!-- tests/Sandbox is intentionally absent: it needs live credentials and is opt-in. -->
     </testsuites>
     <source><include><directory>src</directory></include></source>
     <php>
