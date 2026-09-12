@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Foundation\Application;
+use Illuminate\Support\Facades\Schema;
 use Impruthvi\CashierEntitlements\Billing\DecisionStatus;
 use Impruthvi\CashierEntitlements\Billing\OwnerReference;
 use Impruthvi\CashierEntitlements\Billing\PriceCatalog;
 use Impruthvi\CashierEntitlements\Billing\PriceMapper;
 use Impruthvi\CashierEntitlements\CashierEntitlementsServiceProvider;
+use Impruthvi\CashierEntitlements\Drivers\EntitlementDriver;
+use Impruthvi\CashierEntitlements\Drivers\NativeOnlyDriver;
 use Impruthvi\CashierEntitlements\Overrides\NativeOverrides;
 use Impruthvi\CashierEntitlements\Persistence\NativeStateStore;
 use Impruthvi\CashierEntitlements\Resolution\LocalResolver;
@@ -88,6 +91,12 @@ if ($access->usage('projects') !== 1 || $access->remaining('projects') !== 1
     || $access->record('projects', 2, 'measured-overage')->total !== 3
     || $access->remaining('projects') !== -1) {
     throw new RuntimeException('Owner-scoped usage or remaining failed on a fresh install.');
+}
+
+// M5: an installation that configures no adapter must stay native-only and still own its binding table.
+if (! $app->make(EntitlementDriver::class) instanceof NativeOnlyDriver
+    || ! Schema::hasTable('cashier_entitlement_driver_bindings')) {
+    throw new RuntimeException('Default entitlement driver or its binding table failed on a fresh install.');
 }
 
 $overrides->revoke($owner, $grant, 'smoke complete', 'script', $at->modify('+1 hour'));

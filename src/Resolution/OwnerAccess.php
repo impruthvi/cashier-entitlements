@@ -12,7 +12,14 @@ use Impruthvi\CashierEntitlements\Usage\UsageReceipt;
 /** No shared cache: each evaluation sees committed local state and the current time. */
 final readonly class OwnerAccess
 {
-    public function __construct(private LocalResolver $resolver, private OwnerReference $owner, private ?DateTimeImmutable $at = null) {}
+    /** @param array<string, bool|int|null>|null $snapshot One pre-read batch, reused by every feature below. */
+    public function __construct(private LocalResolver $resolver, private OwnerReference $owner, private ?DateTimeImmutable $at = null, private ?array $snapshot = null) {}
+
+    /** Boolean features answer access; numeric features answer their limit. */
+    public function value(string $feature): bool|int|null
+    {
+        return $this->resolver->booleanFeature($feature) ? $this->can($feature) : $this->limit($feature);
+    }
 
     public function can(string $feature): bool
     {
@@ -65,6 +72,6 @@ final readonly class OwnerAccess
     /** @return array<string, bool|int|null> Snapshot for request-scoped batching. */
     public function all(): array
     {
-        return $this->resolver->values($this->owner, $this->at ?? Date::now()->toDateTimeImmutable());
+        return $this->snapshot ?? $this->resolver->values($this->owner, $this->at ?? Date::now()->toDateTimeImmutable());
     }
 }

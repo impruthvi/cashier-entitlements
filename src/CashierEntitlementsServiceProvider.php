@@ -8,8 +8,12 @@ use Illuminate\Database\Connection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Impruthvi\CashierEntitlements\Billing\PriceCatalog;
+use Impruthvi\CashierEntitlements\Bridges\Pennant\NativeDriver;
 use Impruthvi\CashierEntitlements\Commands\ReconcileCommand;
 use Impruthvi\CashierEntitlements\Commands\RecoverCommand;
+use Impruthvi\CashierEntitlements\Drivers\EntitlementDriver;
+use Impruthvi\CashierEntitlements\Drivers\Masterix\MasterixDriver;
+use Impruthvi\CashierEntitlements\Drivers\NativeOnlyDriver;
 use Impruthvi\CashierEntitlements\Listeners\QueueRefreshFromWebhook;
 use Impruthvi\CashierEntitlements\Overrides\NativeOverrides;
 use Impruthvi\CashierEntitlements\Persistence\NativeStateStore;
@@ -23,6 +27,8 @@ use Impruthvi\CashierEntitlements\Stripe\StripeSubscriptionSource;
 use Impruthvi\CashierEntitlements\Usage\MeterPeriods;
 use Laravel\Cashier\Cashier;
 use Laravel\Cashier\Events\WebhookHandled;
+use Laravel\Pennant\FeatureManager;
+use LucaLongo\LaravelEntitlements\Entitlements;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
@@ -36,6 +42,7 @@ final class CashierEntitlementsServiceProvider extends PackageServiceProvider
                 'create_cashier_entitlements_billing_periods_table',
                 'create_cashier_entitlements_usage_tables',
                 'create_cashier_entitlements_overrides_table',
+                'create_cashier_entitlements_driver_bindings_table',
             ]);
     }
 
@@ -62,6 +69,11 @@ final class CashierEntitlementsServiceProvider extends PackageServiceProvider
             $this->app->make(MeterPeriods::class),
         ));
         $this->app->when(RefreshManager::class)->needs(Connection::class)->give(fn () => $this->connection());
+        $this->app->bind(EntitlementDriver::class, fn (): EntitlementDriver => match ($this->driverName()) {
+            'native' => new NativeOnlyDriver,
+            'masterix' => new MasterixDriver($this->connection(), $this->app->make(NativeStateStore::class), $this->masterixPlans()),
+            default => throw new ReadFailure('invalid_entitlement_driver'),
+        });
         $this->app->bind(StripeSubscriptionSource::class, function (): StripeSubscriptionSource {
             if (! class_exists(Cashier::class)) {
                 throw new ReadFailure('cashier_not_installed');
@@ -84,6 +96,11 @@ final class CashierEntitlementsServiceProvider extends PackageServiceProvider
 
     public function packageBooted(): void
     {
+        if (class_exists(FeatureManager::class)) {
+            $this->callAfterResolving(FeatureManager::class, function (FeatureManager $manager): void {
+                $manager->extend('cashier-entitlements', fn ($app) => new NativeDriver(fn () => $app->make(LocalResolver::class)));
+            });
+        }
         if (class_exists(WebhookHandled::class)) {
             Event::listen(WebhookHandled::class, QueueRefreshFromWebhook::class);
         }
@@ -97,6 +114,36 @@ final class CashierEntitlementsServiceProvider extends PackageServiceProvider
         }
 
         return $context;
+    }
+
+    private function driverName(): string
+    {
+        $driver = config('cashier-entitlements.driver', 'native');
+        if (! is_string($driver)) {
+            throw new ReadFailure('invalid_entitlement_driver');
+        }
+        if ($driver === 'masterix' && ! class_exists(Entitlements::class)) {
+            throw new ReadFailure('masterix_not_installed');
+        }
+
+        return $driver;
+    }
+
+    /** @return array<string, int|string> */
+    private function masterixPlans(): array
+    {
+        $plans = config('cashier-entitlements.masterix.plans', []);
+        if (! is_array($plans) || $plans === []) {
+            throw new ReadFailure('invalid_masterix_plans');
+        }
+        foreach ($plans as $key => $external) {
+            if (! is_string($key) || trim($key) === '' || (! is_string($external) && ! is_int($external))
+                || (is_string($external) && trim($external) === '')) {
+                throw new ReadFailure('invalid_masterix_plans');
+            }
+        }
+
+        return $plans;
     }
 
     private function overridesEnabled(): bool

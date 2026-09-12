@@ -15,4 +15,8 @@ return [
     'meters' => [],
     // Consult the audited override ledger during local resolution. Costs one extra query per resolve.
     'overrides' => false,
+    // Where applied entitlements are projected: 'native' only, or also 'masterix'.
+    'driver' => 'native',
+    // Application plan key => Masterix plan key. Required for every plan the catalog can resolve.
+    'masterix' => ['plans' => []],
 ];

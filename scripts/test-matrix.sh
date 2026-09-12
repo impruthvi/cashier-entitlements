@@ -33,7 +33,11 @@ if [[ "$mode" == all || "$mode" == masterix ]]; then
 fi
 if [[ "$mode" == all || "$mode" == pennant ]]; then
     "$php_binary" "$composer_binary" require --dev --no-update --no-interaction 'laravel/pennant:^1.26'
-    test_paths+=(tests/Compatibility/PennantTest.php)
+    test_paths+=(tests/Compatibility/PennantTest.php tests/Compatibility/PennantBridgeTest.php)
+fi
+# The Masterix driver projects Cashier billing facts, so it needs both optional packages.
+if [[ "$mode" == all ]]; then
+    test_paths+=(tests/Compatibility/MasterixDriverTest.php)
 fi
 update_flags=(--no-interaction --prefer-dist --prefer-stable --no-progress)
 if [[ "$preference" == lowest ]]; then update_flags+=(--prefer-lowest); fi

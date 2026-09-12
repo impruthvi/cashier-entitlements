@@ -13,6 +13,8 @@ use Impruthvi\CashierEntitlements\Billing\DecisionStatus;
 use Impruthvi\CashierEntitlements\Billing\OwnerReference;
 use Impruthvi\CashierEntitlements\Billing\PriceCatalog;
 use Impruthvi\CashierEntitlements\Billing\PriceMapper;
+use Impruthvi\CashierEntitlements\Drivers\EntitlementDriver;
+use Impruthvi\CashierEntitlements\Drivers\NativeOnlyDriver;
 use Impruthvi\CashierEntitlements\Jobs\RefreshOwner;
 use Impruthvi\CashierEntitlements\Persistence\NativeStateStore;
 use Impruthvi\CashierEntitlements\Resolution\FreshnessPolicy;
@@ -22,7 +24,8 @@ final readonly class RefreshManager
 {
     public function __construct(private Connection $connection, private NativeStateStore $store,
         private OwnerLocator $owners, private StripeSubscriptionSource $source, private PriceCatalog $catalog,
-        private FreshnessPolicy $freshness, private PriceMapper $mapper = new PriceMapper) {}
+        private FreshnessPolicy $freshness, private EntitlementDriver $driver = new NativeOnlyDriver,
+        private PriceMapper $mapper = new PriceMapper) {}
 
     public function request(Model $owner, ?string $eventId = null, bool $dispatch = true): OwnerReference
     {
@@ -113,9 +116,14 @@ final readonly class RefreshManager
                 if ($this->owners->customer($model) !== $customer) {
                     throw new ReadFailure('customer_changed_during_refresh');
                 }
+                if (! $this->store->complete($claim, $decision, $this->catalog->version, $snapshot->observedAt,
+                    Date::now()->toDateTimeImmutable(), $observations)) {
+                    return false;
+                }
+                // A driver that refuses the change aborts this transaction, so nothing is applied.
+                $this->driver->apply($model, $owner, $decision, Date::now()->toDateTimeImmutable());
 
-                return $this->store->complete($claim, $decision, $this->catalog->version, $snapshot->observedAt,
-                    Date::now()->toDateTimeImmutable(), $observations);
+                return true;
             }, 3);
 
             return $applied ? 'applied' : 'superseded';

@@ -25,6 +25,18 @@ final readonly class LocalResolver
         return new OwnerAccess($this, $owner, $at);
     }
 
+    /** One local read pinned to `$at`, so a batch of feature answers costs a single query. */
+    public function snapshot(OwnerReference $owner, DateTimeImmutable $at): OwnerAccess
+    {
+        return new OwnerAccess($this, $owner, $at, $this->values($owner, $at));
+    }
+
+    /** @return list<string> */
+    public function catalogFeatures(): array
+    {
+        return array_keys($this->catalog->features());
+    }
+
     public function usageStore(): NativeUsage
     {
         return new NativeUsage($this->store, $this->catalog, $this->meters);

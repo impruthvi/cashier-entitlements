@@ -20,12 +20,25 @@ final readonly class PriceCatalog
         public bool $liveMode = false,
     ) {}
 
-    public function booleanFeature(string $feature): bool
+    /**
+     * Every feature this application declares, independent of any owner's grants.
+     *
+     * @return array<string, bool|int|null>
+     */
+    public function features(): array
     {
         $features = $this->freeAllowances;
         foreach ($this->prices as $mapping) {
             $features = [...$features, ...$mapping->allowances];
         }
+        ksort($features);
+
+        return $features;
+    }
+
+    public function booleanFeature(string $feature): bool
+    {
+        $features = $this->features();
         if (! array_key_exists($feature, $features)) {
             throw new UnknownFeature($feature);
         }

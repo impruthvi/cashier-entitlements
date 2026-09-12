@@ -2,12 +2,13 @@
 
 Local entitlement resolution and background billing reconciliation for Laravel Cashier.
 
-**Status: M4 development build, not a production release.** The package includes
+**Status: M5 development build, not a production release.** The package includes
 typed billing rules, complete Stripe intake, Cashier diagnostic dry-runs, durable
 refresh requests, fenced queue workers, atomic native application, local-only access
-resolution, metered usage with transactional limit admission and an audited override
-ledger. Application is disabled until explicitly configured. Production Masterix/Pennant
-adapters, account-wide recovery and operational sweeps remain later work.
+resolution, metered usage with transactional limit admission, an audited override
+ledger, an optional Masterix driver and an optional read-only Pennant store.
+Application is disabled until explicitly configured, and both adapters are off by
+default. Account-wide recovery, operational sweeps and the release gate remain later work.
 
 See [the M1 API and rules](docs/m1-billing.md) for local, side-effect-free calculations.
 Results describe a supplied snapshot; they are not automatically applied access grants.
@@ -17,6 +18,9 @@ See [M3 installation, refresh and local resolution](docs/m3-refresh.md) before e
 native application. You must choose a freshness policy and schedule recovery/refresh work.
 See [M4 usage, limits and overrides](docs/m4-usage.md) to meter consumption, enforce plan
 limits in the same transaction as your domain write, and grant audited exceptions.
+See [M5 Masterix and Pennant adapters](docs/m5-adapters.md) before enabling either one.
+Each is deliberately narrower than its upstream package, and Pennant reads a
+request-lifetime snapshot rather than strictly fresh state.
 
 The intended purpose is to answer what an organization can access from local,
 successfully applied billing facts, and repair that projection in background work.
@@ -44,8 +48,9 @@ development dependencies. `PHP_BINARY` and `COMPOSER_BINARY` can select executab
 Lockfiles remain there for reproduction; GitHub CI uploads its matrix lockfiles.
 
 Cashier is optional at installation but required for billing diagnostics and refresh;
-its Stripe SDK powers provider reads. Masterix and Pennant remain optional feasibility
-dependencies. None is required to boot the package. The consumer smoke test verifies
+its Stripe SDK powers provider reads. Masterix and Pennant are optional adapter
+dependencies, each exercised against the real upstream package. None is required to boot
+the package. The consumer smoke test verifies
 auto-discovery, config/migration publishing, native application and local resolution
 without those packages or Testbench installed.
 It uses a local Composer path repository; no Packagist release is implied.
