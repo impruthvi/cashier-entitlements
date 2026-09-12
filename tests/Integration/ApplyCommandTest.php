@@ -14,6 +14,7 @@ pest()->extend(BillingIntegrationTestCase::class);
 
 it('only applies an explicit owner with installation enablement and a freshness policy', function () {
     (require __DIR__.'/../../database/migrations/create_cashier_entitlements_tables.php.stub')->up();
+    (require __DIR__.'/../../database/migrations/create_cashier_entitlements_billing_periods_table.php.stub')->up();
     $owner = $this->organization();
     config(['cashier-entitlements.enabled' => true, 'cashier-entitlements.freshness' => ['retain_last_known' => true]]);
     Bus::fake();

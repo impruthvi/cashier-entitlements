@@ -57,8 +57,8 @@ it('publishes every native migration the apply and usage paths write to', functi
         'cashier-entitlements-migrations',
     ));
 
-    expect($paths)->toHaveCount(3);
-    foreach (['create_cashier_entitlements_tables', 'create_cashier_entitlements_usage_tables', 'create_cashier_entitlements_overrides_table'] as $migration) {
+    expect($paths)->toHaveCount(4);
+    foreach (['create_cashier_entitlements_tables', 'create_cashier_entitlements_billing_periods_table', 'create_cashier_entitlements_usage_tables', 'create_cashier_entitlements_overrides_table'] as $migration) {
         expect(implode(' ', $paths))->toContain($migration);
     }
 });

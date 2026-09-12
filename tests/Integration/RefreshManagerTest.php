@@ -21,6 +21,7 @@ pest()->extend(BillingIntegrationTestCase::class);
 
 beforeEach(function () {
     (require __DIR__.'/../../database/migrations/create_cashier_entitlements_tables.php.stub')->up();
+    (require __DIR__.'/../../database/migrations/create_cashier_entitlements_billing_periods_table.php.stub')->up();
     config(['cashier-entitlements.enabled' => true, 'cashier-entitlements.freshness' => ['max_stale_age' => 60]]);
     app()->instance(PriceCatalog::class, new PriceCatalog('v1', ['price_base' => new PriceMapping('pro', ['projects' => 10])]));
     Date::setTestNow('2026-09-11T12:00:00Z');

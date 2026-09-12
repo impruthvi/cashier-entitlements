@@ -29,6 +29,15 @@ return new class extends Migration
             $table->string('last_error')->nullable();
             $table->index(['retry_at', 'lease_until']);
         });
+        Schema::create('cashier_entitlement_billing_periods', function (Blueprint $table) {
+            $table->char('id', 64)->primary();
+            $table->char('owner_id', 64);
+            $table->string('price_id');
+            $table->string('item_id');
+            $table->bigInteger('period_start');
+            $table->bigInteger('period_end');
+            $table->index(['owner_id', 'price_id'], 'ce_billing_period_owner_price');
+        });
         Schema::create('cashier_entitlement_receipts', function (Blueprint $table) {
             $table->char('id', 64)->primary();
             $table->char('owner_id', 64)->index();
@@ -39,6 +48,7 @@ return new class extends Migration
 
     public function down(): void
     {
+        Schema::dropIfExists('cashier_entitlement_billing_periods');
         Schema::dropIfExists('cashier_entitlement_receipts');
         Schema::dropIfExists('cashier_entitlement_states');
     }

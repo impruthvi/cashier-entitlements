@@ -25,10 +25,10 @@ it('serializes concurrent PostgreSQL admissions so a one-unit limit admits exact
     DB::setDefaultConnection('m4pg');
     // The cluster is shared across concurrency tests, so start from a known-empty schema.
     Schema::dropIfExists('projects');
-    foreach (['create_cashier_entitlements_usage_tables', 'create_cashier_entitlements_tables'] as $migration) {
+    foreach (['create_cashier_entitlements_usage_tables', 'create_cashier_entitlements_billing_periods_table', 'create_cashier_entitlements_tables'] as $migration) {
         (require __DIR__.'/../../database/migrations/'.$migration.'.php.stub')->down();
     }
-    foreach (['create_cashier_entitlements_tables', 'create_cashier_entitlements_usage_tables'] as $migration) {
+    foreach (['create_cashier_entitlements_tables', 'create_cashier_entitlements_billing_periods_table', 'create_cashier_entitlements_usage_tables'] as $migration) {
         (require __DIR__.'/../../database/migrations/'.$migration.'.php.stub')->up();
     }
     Schema::create('projects', fn (Blueprint $table) => $table->string('id')->primary());

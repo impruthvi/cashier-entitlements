@@ -33,6 +33,7 @@ final class CashierEntitlementsServiceProvider extends PackageServiceProvider
         $package->name('cashier-entitlements')->hasConfigFile()->hasCommands([ReconcileCommand::class, RecoverCommand::class])
             ->hasMigrations([
                 'create_cashier_entitlements_tables',
+                'create_cashier_entitlements_billing_periods_table',
                 'create_cashier_entitlements_usage_tables',
                 'create_cashier_entitlements_overrides_table',
             ]);
@@ -58,6 +59,7 @@ final class CashierEntitlementsServiceProvider extends PackageServiceProvider
             $this->app->make(PriceCatalog::class),
             $this->app->make(FreshnessPolicy::class),
             $this->overridesEnabled() ? $this->app->make(NativeOverrides::class) : null,
+            $this->app->make(MeterPeriods::class),
         ));
         $this->app->when(RefreshManager::class)->needs(Connection::class)->give(fn () => $this->connection());
         $this->app->bind(StripeSubscriptionSource::class, function (): StripeSubscriptionSource {

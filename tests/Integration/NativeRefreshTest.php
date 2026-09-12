@@ -13,6 +13,7 @@ pest()->extend(BillingIntegrationTestCase::class);
 
 beforeEach(function () {
     (require __DIR__.'/../../database/migrations/create_cashier_entitlements_tables.php.stub')->up();
+    (require __DIR__.'/../../database/migrations/create_cashier_entitlements_billing_periods_table.php.stub')->up();
 });
 
 it('rejects an old claim after a newer request and leaves that request pending', function () {

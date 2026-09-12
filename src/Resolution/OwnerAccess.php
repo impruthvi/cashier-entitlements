@@ -7,6 +7,7 @@ namespace Impruthvi\CashierEntitlements\Resolution;
 use DateTimeImmutable;
 use Illuminate\Support\Facades\Date;
 use Impruthvi\CashierEntitlements\Billing\OwnerReference;
+use Impruthvi\CashierEntitlements\Usage\UsageReceipt;
 
 /** No shared cache: each evaluation sees committed local state and the current time. */
 final readonly class OwnerAccess
@@ -38,6 +39,27 @@ final readonly class OwnerAccess
         }
 
         return $value;
+    }
+
+    public function usage(string $feature): int
+    {
+        return $this->resolver->usageStore()->usage($this->owner, $feature, $this->at ?? Date::now()->toDateTimeImmutable());
+    }
+
+    /** Informational only. Use NativeUsage::admit() for concurrent hard-limit enforcement. */
+    public function remaining(string $feature): ?int
+    {
+        // Both reads use one evaluation instant, even if midnight falls between them.
+        $at = $this->at ?? Date::now()->toDateTimeImmutable();
+        $limit = $this->resolver->for($this->owner, $at)->limit($feature);
+        $usage = $this->resolver->usageStore()->usage($this->owner, $feature, $at);
+
+        return $limit === null ? null : $limit - $usage;
+    }
+
+    public function record(string $feature, int $quantity, string $idempotencyKey, ?DateTimeImmutable $occurredAt = null): UsageReceipt
+    {
+        return $this->resolver->usageStore()->record($this->owner, $feature, $quantity, $idempotencyKey, $this->at, $occurredAt);
     }
 
     /** @return array<string, bool|int|null> Snapshot for request-scoped batching. */

@@ -83,6 +83,13 @@ if ($receipt->total !== 1 || $usage->usage($owner, 'projects', $at) !== 1
     throw new RuntimeException('Usage admission or override resolution failed on a fresh install.');
 }
 
+$access = $resolver->for($owner, $at);
+if ($access->usage('projects') !== 1 || $access->remaining('projects') !== 1
+    || $access->record('projects', 2, 'measured-overage')->total !== 3
+    || $access->remaining('projects') !== -1) {
+    throw new RuntimeException('Owner-scoped usage or remaining failed on a fresh install.');
+}
+
 $overrides->revoke($owner, $grant, 'smoke complete', 'script', $at->modify('+1 hour'));
 $history = $overrides->history($owner);
 if ($resolver->for($owner, $at->modify('+1 hour'))->limit('projects') !== 0 || count($history) !== 2) {

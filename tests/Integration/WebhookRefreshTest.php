@@ -13,6 +13,7 @@ pest()->extend(BillingIntegrationTestCase::class);
 
 it('records only verified Cashier webhook completions and deduplicates event requests', function () {
     (require __DIR__.'/../../database/migrations/create_cashier_entitlements_tables.php.stub')->up();
+    (require __DIR__.'/../../database/migrations/create_cashier_entitlements_billing_periods_table.php.stub')->up();
     config(['cashier-entitlements.enabled' => true, 'cashier-entitlements.freshness' => ['max_stale_age' => 60],
         'cashier.webhook.secret' => 'whsec_fixture_only']);
     app()->instance(PriceCatalog::class, new PriceCatalog('v1', []));

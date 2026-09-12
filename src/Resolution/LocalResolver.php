@@ -13,14 +13,21 @@ use Impruthvi\CashierEntitlements\Billing\PriceMapper;
 use Impruthvi\CashierEntitlements\Overrides\NativeOverrides;
 use Impruthvi\CashierEntitlements\Persistence\NativeStateStore;
 use Impruthvi\CashierEntitlements\Reconciliation\ReadFailure;
+use Impruthvi\CashierEntitlements\Usage\MeterPeriods;
+use Impruthvi\CashierEntitlements\Usage\NativeUsage;
 
 final readonly class LocalResolver
 {
-    public function __construct(private NativeStateStore $store, private PriceCatalog $catalog, private FreshnessPolicy $freshness, private ?NativeOverrides $overrides = null) {}
+    public function __construct(private NativeStateStore $store, private PriceCatalog $catalog, private FreshnessPolicy $freshness, private ?NativeOverrides $overrides = null, private MeterPeriods $meters = new MeterPeriods) {}
 
     public function for(OwnerReference $owner, ?DateTimeImmutable $at = null): OwnerAccess
     {
         return new OwnerAccess($this, $owner, $at);
+    }
+
+    public function usageStore(): NativeUsage
+    {
+        return new NativeUsage($this->store, $this->catalog, $this->meters);
     }
 
     public function assertConnection(OwnerReference $owner, Connection $connection): void

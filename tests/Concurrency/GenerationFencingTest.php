@@ -19,6 +19,7 @@ it('rejects a late writer from a separate PostgreSQL process after a replacement
         'username' => get_current_user(), 'password' => '', 'charset' => 'utf8', 'prefix' => '', 'search_path' => 'public', 'sslmode' => 'disable']]);
     DB::setDefaultConnection('m3pg');
     (require __DIR__.'/../../database/migrations/create_cashier_entitlements_tables.php.stub')->up();
+    (require __DIR__.'/../../database/migrations/create_cashier_entitlements_billing_periods_table.php.stub')->up();
     $store = new NativeStateStore(DB::connection());
     $owner = new OwnerReference('organization', 42, 'm3pg');
     $at = new DateTimeImmutable('2026-09-11T12:00:00Z');

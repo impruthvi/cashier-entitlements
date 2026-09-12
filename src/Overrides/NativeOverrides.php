@@ -43,6 +43,10 @@ final readonly class NativeOverrides
 
     public function revoke(OwnerReference $owner, int $grantId, string $reason, string $actor, DateTimeImmutable $effectiveAt): int
     {
+        if (trim($reason) === '' || trim($actor) === '') {
+            throw new InvalidArgumentException('invalid_override_revocation');
+        }
+
         return $this->store->synchronized($owner, function (Connection $db, string $ownerId) use ($grantId, $reason, $actor, $effectiveAt): int {
             $grant = $db->table('cashier_entitlement_overrides')->where('owner_id', $ownerId)->where('id', $grantId)->where('kind', 'grant')->first();
             if ($grant === null) {

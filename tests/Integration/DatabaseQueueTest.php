@@ -17,6 +17,7 @@ pest()->extend(BillingIntegrationTestCase::class);
 
 it('executes a serialized Laravel database-queue job from durable request to local access', function () {
     (require __DIR__.'/../../database/migrations/create_cashier_entitlements_tables.php.stub')->up();
+    (require __DIR__.'/../../database/migrations/create_cashier_entitlements_billing_periods_table.php.stub')->up();
     Schema::create('jobs', function (Blueprint $table) {
         $table->id();
         $table->string('queue')->index();

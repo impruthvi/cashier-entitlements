@@ -64,3 +64,21 @@ it('refuses a grant the catalog cannot represent so resolution never reads an un
         ->and(fn () => $overrides->history($owner, limit: 1001))->toThrow(InvalidArgumentException::class, 'invalid_history_page')
         ->and($overrides->history($owner))->toBe([]);
 });
+
+it('requires nonblank audit metadata for revocation without changing the grant or ledger', function (string $reason, string $actor) {
+    $store = new NativeStateStore(DB::connection());
+    $overrides = new NativeOverrides($store, new PriceCatalog('v1', [], ['projects' => 1]));
+    $owner = new OwnerReference('organization', 42, 'testing');
+    $at = new DateTimeImmutable('2026-09-12T12:00:00Z');
+    $grant = $overrides->grant($owner, 'projects', 5, 'support ticket', 'admin:1', $at, $at->modify('+1 day'));
+    $before = $overrides->history($owner);
+    expect(fn () => $overrides->revoke($owner, $grant, $reason, $actor, $at))
+        ->toThrow(InvalidArgumentException::class, 'invalid_override_revocation')
+        ->and($overrides->history($owner))->toBe($before)
+        ->and($overrides->values($owner, $at))->toBe(['projects' => 5]);
+})->with([
+    'empty reason' => ['', 'admin:1'],
+    'whitespace reason' => [" \t\n", 'admin:1'],
+    'empty actor' => ['end trial', ''],
+    'whitespace actor' => ['end trial', " \t\n"],
+]);
