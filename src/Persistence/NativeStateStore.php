@@ -17,6 +17,43 @@ final readonly class NativeStateStore
 {
     public function __construct(private Connection $connection) {}
 
+    public function database(OwnerReference $owner): Connection
+    {
+        $this->identity($owner);
+
+        return $this->connection;
+    }
+
+    public function ownerId(OwnerReference $owner): string
+    {
+        return hash('sha256', $this->identity($owner));
+    }
+
+    /**
+     * Serialize all correctness writes for an owner, without requesting a refresh.
+     *
+     * @template T
+     *
+     * @param  callable(Connection, string): T  $operation
+     * @return T
+     */
+    public function synchronized(OwnerReference $owner, callable $operation): mixed
+    {
+        $identity = $this->identity($owner);
+
+        return $this->connection->transaction(function () use ($owner, $identity, $operation) {
+            $id = hash('sha256', $identity);
+            $this->connection->table('cashier_entitlement_states')->upsert(
+                [['id' => $id, 'owner_identity' => $identity]], ['id'], ['id']);
+            $row = $this->row($owner)->lockForUpdate()->first();
+            if ($row === null || $row->owner_identity !== $identity) {
+                throw new ReadFailure('owner_identity_conflict');
+            }
+
+            return $operation($this->connection, $id);
+        }, 3);
+    }
+
     public function request(OwnerReference $owner, DateTimeImmutable $at, ?string $eventId = null): bool
     {
         $identity = $this->identity($owner);
@@ -95,6 +132,23 @@ final readonly class NativeStateStore
                 $this->row($claim->owner)->update(['lease_until' => 0]);
 
                 return false;
+            }
+            foreach ($observations as $observation) {
+                foreach ($observation['items'] ?? [] as $item) {
+                    if (($item['period_start'] ?? null) === null || ($item['period_end'] ?? null) === null) {
+                        continue;
+                    }
+                    $start = new DateTimeImmutable($item['period_start']);
+                    $end = new DateTimeImmutable($item['period_end']);
+                    if ($end <= $start) {
+                        throw new ReadFailure('invalid_billing_period');
+                    }
+                    $period = ['owner_id' => $this->ownerId($claim->owner), 'price_id' => $item['price_id'],
+                        'item_id' => $item['id'], 'period_start' => $start->getTimestamp(), 'period_end' => $end->getTimestamp()];
+                    $this->connection->table('cashier_entitlement_billing_periods')->upsert([
+                        ['id' => hash('sha256', json_encode($period, JSON_THROW_ON_ERROR)), ...$period],
+                    ], ['id'], ['id']);
+                }
             }
             $this->row($claim->owner)->update(['projection' => $projection, 'applied_hash' => $hash,
                 'catalog_version' => $catalogVersion,

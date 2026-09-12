@@ -22,7 +22,7 @@ export ENTITLEMENTS_OPTIONAL_MODE="$mode"
 
 "$php_binary" "$composer_binary" remove --dev --no-update --no-interaction laravel/cashier laravel/pennant masterix21/laravel-entitlements
 "$php_binary" "$composer_binary" require --dev --no-update --no-interaction "laravel/framework:^${laravel}.0" "orchestra/testbench:^${testbench}.0"
-test_paths=(tests/Core tests/Billing tests/Resolution)
+test_paths=(tests/Core tests/Billing tests/Resolution tests/Usage tests/Overrides)
 if [[ "$mode" == all || "$mode" == cashier ]]; then
     "$php_binary" "$composer_binary" require --dev --no-update --no-interaction 'laravel/cashier:^16.8'
     test_paths+=(tests/Compatibility/CashierTest.php tests/Stripe tests/Reconciliation tests/Commands tests/Integration)

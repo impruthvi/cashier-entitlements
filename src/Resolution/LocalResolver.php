@@ -5,24 +5,39 @@ declare(strict_types=1);
 namespace Impruthvi\CashierEntitlements\Resolution;
 
 use DateTimeImmutable;
+use Illuminate\Database\Connection;
 use Impruthvi\CashierEntitlements\Billing\DecisionStatus;
 use Impruthvi\CashierEntitlements\Billing\OwnerReference;
 use Impruthvi\CashierEntitlements\Billing\PriceCatalog;
 use Impruthvi\CashierEntitlements\Billing\PriceMapper;
+use Impruthvi\CashierEntitlements\Overrides\NativeOverrides;
 use Impruthvi\CashierEntitlements\Persistence\NativeStateStore;
 use Impruthvi\CashierEntitlements\Reconciliation\ReadFailure;
 
 final readonly class LocalResolver
 {
-    public function __construct(private NativeStateStore $store, private PriceCatalog $catalog, private FreshnessPolicy $freshness) {}
+    public function __construct(private NativeStateStore $store, private PriceCatalog $catalog, private FreshnessPolicy $freshness, private ?NativeOverrides $overrides = null) {}
 
     public function for(OwnerReference $owner, ?DateTimeImmutable $at = null): OwnerAccess
     {
         return new OwnerAccess($this, $owner, $at);
     }
 
+    public function assertConnection(OwnerReference $owner, Connection $connection): void
+    {
+        if ($this->store->database($owner) !== $connection) {
+            throw new ReadFailure('admission_connection_mismatch');
+        }
+    }
+
     /** @return array<string, bool|int|null> One local query for a batch of feature values. */
     public function values(OwnerReference $owner, DateTimeImmutable $at): array
+    {
+        return [...$this->baseValues($owner, $at), ...($this->overrides?->values($owner, $at) ?? [])];
+    }
+
+    /** @return array<string, bool|int|null> */
+    private function baseValues(OwnerReference $owner, DateTimeImmutable $at): array
     {
         $validation = (new PriceMapper)->map($owner, [], $this->catalog, $at, true);
         if ($validation->status === DecisionStatus::Invalid) {
@@ -47,14 +62,6 @@ final readonly class LocalResolver
 
     public function booleanFeature(string $feature): bool
     {
-        $features = $this->catalog->freeAllowances;
-        foreach ($this->catalog->prices as $mapping) {
-            $features = [...$features, ...$mapping->allowances];
-        }
-        if (! array_key_exists($feature, $features)) {
-            throw new UnknownFeature($feature);
-        }
-
-        return is_bool($features[$feature]);
+        return $this->catalog->booleanFeature($feature);
     }
 }

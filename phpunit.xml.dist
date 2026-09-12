@@ -12,6 +12,8 @@
         <testsuite name="Commands"><directory>tests/Commands</directory></testsuite>
         <testsuite name="Resolution"><directory>tests/Resolution</directory></testsuite>
         <testsuite name="Integration"><directory>tests/Integration</directory></testsuite>
+        <testsuite name="Usage"><directory>tests/Usage</directory></testsuite>
+        <testsuite name="Overrides"><directory>tests/Overrides</directory></testsuite>
         <testsuite name="Concurrency"><directory>tests/Concurrency</directory></testsuite>
         <testsuite name="Compatibility"><directory>tests/Compatibility</directory></testsuite>
     </testsuites>

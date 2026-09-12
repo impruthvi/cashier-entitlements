@@ -2,11 +2,12 @@
 
 Local entitlement resolution and background billing reconciliation for Laravel Cashier.
 
-**Status: M3 development build, not a production release.** The package includes
+**Status: M4 development build, not a production release.** The package includes
 typed billing rules, complete Stripe intake, Cashier diagnostic dry-runs, durable
-refresh requests, fenced queue workers, atomic native application and local-only
-access resolution. Application is disabled until explicitly configured. Usage,
-overrides, production Masterix/Pennant adapters and account-wide recovery remain later work.
+refresh requests, fenced queue workers, atomic native application, local-only access
+resolution, metered usage with transactional limit admission and an audited override
+ledger. Application is disabled until explicitly configured. Production Masterix/Pennant
+adapters, account-wide recovery and operational sweeps remain later work.
 
 See [the M1 API and rules](docs/m1-billing.md) for local, side-effect-free calculations.
 Results describe a supplied snapshot; they are not automatically applied access grants.
@@ -14,6 +15,8 @@ See [M2 setup, commands and safety boundaries](docs/m2-diagnostics.md) to compar
 current Stripe subscriptions with Cashier without changing customer access.
 See [M3 installation, refresh and local resolution](docs/m3-refresh.md) before enabling
 native application. You must choose a freshness policy and schedule recovery/refresh work.
+See [M4 usage, limits and overrides](docs/m4-usage.md) to meter consumption, enforce plan
+limits in the same transaction as your domain write, and grant audited exceptions.
 
 The intended purpose is to answer what an organization can access from local,
 successfully applied billing facts, and repair that projection in background work.
@@ -70,8 +73,8 @@ No optional provider or Pennant store is registered automatically by this packag
 
 ## Next milestone
 
-M4: native usage, billing periods, admission checks and audited overrides.
+M5: production Masterix and Pennant adapters, behind their safety gates.
 Resumable operational sweeps and the full health/doctor surface remain later work.
-Production adapters come later, after their safety gates.
+Usage is not reported to Stripe metered billing, and counters are never pruned.
 
 MIT licensed; see [LICENSE.md](LICENSE.md).

@@ -9,8 +9,11 @@ use Impruthvi\CashierEntitlements\Billing\OwnerReference;
 use Impruthvi\CashierEntitlements\Billing\PriceCatalog;
 use Impruthvi\CashierEntitlements\Billing\PriceMapper;
 use Impruthvi\CashierEntitlements\CashierEntitlementsServiceProvider;
+use Impruthvi\CashierEntitlements\Overrides\NativeOverrides;
 use Impruthvi\CashierEntitlements\Persistence\NativeStateStore;
 use Impruthvi\CashierEntitlements\Resolution\LocalResolver;
+use Impruthvi\CashierEntitlements\Usage\LimitExceeded;
+use Impruthvi\CashierEntitlements\Usage\NativeUsage;
 use Laravel\Cashier\Cashier;
 use Laravel\Pennant\Feature;
 use LucaLongo\LaravelEntitlements\Entitlements;
@@ -46,7 +49,8 @@ if ($result->status !== DecisionStatus::Allowed || $result->allowances !== ['pro
 
 config(['database.default' => 'sqlite', 'database.connections.sqlite' => [
     'driver' => 'sqlite', 'database' => ':memory:', 'prefix' => '',
-], 'cashier-entitlements.freshness' => ['max_stale_age' => 60]]);
+], 'cashier-entitlements.freshness' => ['max_stale_age' => 60],
+    'cashier-entitlements.meters' => ['projects' => 'calendar_day'], 'cashier-entitlements.overrides' => true]);
 if ($kernel->call('vendor:publish', ['--tag' => 'cashier-entitlements-migrations', '--force' => true]) !== 0
     || $kernel->call('migrate', ['--force' => true]) !== 0) {
     throw new RuntimeException('Native migration publish or execution failed.');
@@ -62,4 +66,27 @@ if (! $store->complete($store->claim($owner, $at), $result, 'v1', $at, $at)
     throw new RuntimeException('Native apply or local resolution failed without optional dependencies.');
 }
 
-echo 'Consumer discovery, config/migration publishing, native apply and local resolution passed without optional dependencies or Testbench.'.PHP_EOL;
+// M4: the usage and override tables must publish and work on a fresh install too.
+$overrides = $app->make(NativeOverrides::class);
+$usage = $app->make(NativeUsage::class);
+$resolver = $app->make(LocalResolver::class);
+try {
+    $usage->admit($owner, 'projects', 1, 'first', $resolver, static fn () => null, $at);
+    throw new RuntimeException('Usage admission ignored a zero plan limit.');
+} catch (LimitExceeded) {
+}
+
+$grant = $overrides->grant($owner, 'projects', 2, 'consumer smoke', 'script', $at, $at->modify('+1 day'));
+$receipt = $usage->admit($owner, 'projects', 1, 'first', $resolver, static fn () => null, $at);
+if ($receipt->total !== 1 || $usage->usage($owner, 'projects', $at) !== 1
+    || $resolver->for($owner, $at)->limit('projects') !== 2) {
+    throw new RuntimeException('Usage admission or override resolution failed on a fresh install.');
+}
+
+$overrides->revoke($owner, $grant, 'smoke complete', 'script', $at->modify('+1 hour'));
+$history = $overrides->history($owner);
+if ($resolver->for($owner, $at->modify('+1 hour'))->limit('projects') !== 0 || count($history) !== 2) {
+    throw new RuntimeException('Override revocation or history failed on a fresh install.');
+}
+
+echo 'Consumer discovery, config/migration publishing, native apply, local resolution, usage admission and audited overrides passed without optional dependencies or Testbench.'.PHP_EOL;
