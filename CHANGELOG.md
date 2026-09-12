@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Fix scheduled sweep starvation by automatically resuming unfinished scans in the owner scope.
+- Preserve pending initial refreshes, active worker claims and retry backoff during sweeps.
+- Validate cron field counts/ranges and reject partially invalid convergence schedules.
+- Report failed sweep owners as unhealthy even when no native state row could be created.
+- Add scheduled continuation, malformed cron, pending refresh and failed-sweep health regressions.
 - M6 bounded, resumable account sweep that requests refreshes for owners whose observation is stale.
 - Durable audit runs with cursor and heartbeat; an interrupted scan stays incomplete and proves nothing.
 - Local-only `entitlements:doctor` reporting configuration, backlog, staleness and schedule health.

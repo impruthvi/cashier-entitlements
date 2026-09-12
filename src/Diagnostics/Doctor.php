@@ -59,10 +59,17 @@ final readonly class Doctor
             'detail' => $plan->reason ?? 'sweep and recovery are registered on the scheduler'];
 
         $sweep = $scope === null ? null : $this->sweep($checks, $scope, $at);
+        $errors = $state['errors'];
+        if ($sweep !== null && $sweep['failed'] > 0) {
+            // A run retains only its last reason, not per-reason counts. Report the total
+            // separately rather than attributing every failed owner to that last reason.
+            $errors['sweep_owner_failed'] = ($errors['sweep_owner_failed'] ?? 0) + $sweep['failed'];
+        }
+        ksort($errors);
         $status = array_column($checks, 'status');
 
         return ['schema_version' => 1, 'checks' => $checks, 'state' => $state, 'sweep' => $sweep,
-            'errors' => $state['errors'],
+            'errors' => $errors,
             'exit_code' => in_array('fail', $status, true) ? 2 : (in_array('warn', $status, true) ? 1 : 0)];
     }
 
@@ -112,8 +119,9 @@ final readonly class Doctor
             return null;
         }
         $complete = $run['completed_at'] !== null;
-        $checks[] = ['name' => 'account_sweep', 'status' => $complete ? 'ok' : 'warn',
-            'detail' => $complete ? 'last scan exhausted its scope' : 'last scan is incomplete and proves nothing about owners it did not reach'];
+        $checks[] = ['name' => 'account_sweep', 'status' => $complete && $run['failed'] === 0 ? 'ok' : 'warn',
+            'detail' => ! $complete ? 'last scan is incomplete and proves nothing about owners it did not reach'
+                : ($run['failed'] > 0 ? 'last scan exhausted its scope with failed owners' : 'last scan exhausted its scope')];
 
         return ['run' => $run['id'], 'complete' => $complete, 'examined' => $run['examined'],
             'requested' => $run['requested'], 'failed' => $run['failed'], 'last_error' => $run['last_error'],

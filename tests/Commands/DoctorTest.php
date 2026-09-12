@@ -68,6 +68,9 @@ it('warns with the exact reason a convergence schedule was ignored rather than s
     'nothing scheduled' => [['owner_type' => 'organization'], 'no_scheduled_convergence'],
     'no owner type' => [['sweep' => '0 * * * *'], 'schedule_requires_owner_type'],
     'bad expression' => [['owner_type' => 'organization', 'sweep' => 'hourly'], 'invalid_cron_expression'],
+    'invalid minute' => [['owner_type' => 'organization', 'sweep' => '99 * * * *'], 'invalid_cron_expression'],
+    'missing fields' => [['owner_type' => 'organization', 'sweep' => '* * *'], 'invalid_cron_expression'],
+    'partial schedule' => [['owner_type' => 'organization', 'sweep' => 'hourly', 'recover' => '*/5 * * * *'], 'invalid_cron_expression'],
     'bad limit' => [['owner_type' => 'organization', 'sweep' => '0 * * * *', 'sweep_limit' => 9999], 'invalid_sweep_limit'],
     'bad stale age' => [['owner_type' => 'organization', 'sweep' => '0 * * * *', 'stale_after' => 0], 'invalid_stale_age'],
     'not an array' => [[], 'no_scheduled_convergence'],
@@ -153,6 +156,21 @@ it('emits only counts, timestamps and known reason codes, never credentials or S
     expect($json)->not->toContain('sk_')->not->toContain('cus_')
         ->not->toContain('select ')->not->toContain('Exception')
         ->and($report['state']['threshold'])->toBeNull();
+});
+
+it('reports failed sweep owners even when no native state could be created', function () {
+    config(['cashier-entitlements.schedule' => ['owner_type' => 'organization', 'sweep' => '0 * * * *', 'recover' => '*/5 * * * *']]);
+    $this->organization('1', 'cus_shared');
+    $this->organization('2', 'cus_shared');
+    Artisan::call('entitlements:sweep', ['--owner-type' => 'organization']);
+
+    [$exit, $report] = doctor(['--owner-type' => 'organization']);
+
+    expect($exit)->toBe(1)
+        ->and($report['state']['owners'])->toBe(0)
+        ->and($report['sweep'])->toMatchArray(['complete' => true, 'failed' => 2, 'last_error' => 'ambiguous_customer'])
+        ->and(status($report, 'account_sweep'))->toBe('warn')
+        ->and($report['errors'])->toBe(['sweep_owner_failed' => 2]);
 });
 
 it('rejects an unusable stale-age argument instead of reporting a misleading scan', function () {

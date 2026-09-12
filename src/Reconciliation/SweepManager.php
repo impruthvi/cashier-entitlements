@@ -28,7 +28,7 @@ final readonly class SweepManager
         private OwnerLocator $owners, private RefreshManager $refresh, private FreshnessPolicy $freshness) {}
 
     /**
-     * @param  string|null  $resume  A run id from an earlier pass, or null to start one.
+     * @param  string|null  $resume  An explicit run id, or null to continue this scope's unfinished scan.
      * @return array<string, mixed>
      */
     public function run(string $alias, int $limit = 100, ?int $staleAfter = null, ?string $resume = null): array
@@ -50,7 +50,7 @@ final readonly class SweepManager
         }
         $class = $this->owners->modelFor($alias);
         $at = Date::now()->toDateTimeImmutable();
-        $id = $resume ?? $this->runs->open($alias, $at);
+        $id = $resume ?? $this->runs->unfinished($alias) ?? $this->runs->open($alias, $at);
         $run = $this->runs->claim($id, $alias, $at);
         if ($run['completed_at'] !== null) {
             return $this->report($id, $alias, $run, true);
@@ -93,14 +93,14 @@ final readonly class SweepManager
     private function due(Model $owner, int $threshold, int $now): bool
     {
         $state = $this->store->state($this->owners->reference($owner));
-        if ($state === null || $state['observed_at'] === null) {
+        if ($state === null) {
             return true;
         }
         if ($state['requested_sequence'] > $state['completed_sequence']) {
             return false;
         }
 
-        return $now - (int) $state['observed_at'] >= $threshold;
+        return $state['observed_at'] === null || $now - (int) $state['observed_at'] >= $threshold;
     }
 
     /**

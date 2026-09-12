@@ -3,10 +3,12 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Date;
 use Impruthvi\CashierEntitlements\Billing\BillingDecision;
 use Impruthvi\CashierEntitlements\Billing\PriceCatalog;
 use Impruthvi\CashierEntitlements\Billing\PriceMapping;
+use Impruthvi\CashierEntitlements\Jobs\RefreshOwner;
 use Impruthvi\CashierEntitlements\Persistence\NativeStateStore;
 use Impruthvi\CashierEntitlements\Reconciliation\OwnerLocator;
 use Impruthvi\CashierEntitlements\Resolution\LocalResolver;
@@ -84,26 +86,63 @@ it('converges an omitted deletion event once the observation ages past the thres
 
 it('ignores a repeated notification and a late stale update without moving applied state backwards', function () {
     $owner = $this->organization();
-    oracle([
-        StripeFixture::page([StripeFixture::subscription()]), StripeFixture::page([StripeFixture::item()]),
-        StripeFixture::page([StripeFixture::subscription()]), StripeFixture::page([StripeFixture::item()]),
+    $fixture = new StripeFixture([
+        StripeFixture::page([StripeFixture::subscription(status: 'canceled')]), StripeFixture::page([StripeFixture::item()]),
+        StripeFixture::page([StripeFixture::subscription(status: 'canceled')]), StripeFixture::page([StripeFixture::item()]),
     ]);
+    app()->instance(StripeSubscriptionSource::class, new StripeSubscriptionSource($fixture->client()));
     $reference = app(OwnerLocator::class)->reference($owner);
     sweep();
     $applied = app(NativeStateStore::class)->state($reference);
 
-    // A duplicate delivery of the same event id must not queue a second refresh.
-    $store = app(NativeStateStore::class);
-    $at = Date::now()->toDateTimeImmutable();
-    expect($store->request($reference, $at, 'evt_1'))->toBeTrue()
-        ->and($store->request($reference, $at, 'evt_1'))->toBeFalse();
-
-    // The late redelivery re-reads current Stripe state, so the same facts reapply unchanged.
-    $store->complete($store->claim($reference, $at),
-        BillingDecision::allowed('mapped', allowances: ['projects' => 10], planKey: 'pro'), 'v1', $at, $at);
+    // Deliver an old active event through Cashier's signed HTTP endpoint. The listener
+    // and real sync-queue worker must reread the provider, which is already canceled.
+    config(['cashier.webhook.secret' => 'whsec_fixture_only']);
+    $item = StripeFixture::item();
+    $item['price']['product'] = 'prod_1';
+    $subscription = [...StripeFixture::subscription(), 'items' => ['data' => [$item]]];
+    $body = json_encode(['id' => 'evt_late_update', 'type' => 'customer.subscription.updated', 'livemode' => false,
+        'data' => ['object' => $subscription]], JSON_THROW_ON_ERROR);
+    $timestamp = time();
+    $signature = 't='.$timestamp.',v1='.hash_hmac('sha256', $timestamp.'.'.$body, 'whsec_fixture_only');
+    foreach ([1, 2] as $delivery) {
+        $this->call('POST', 'stripe/webhook', [], [], [], ['CONTENT_TYPE' => 'application/json', 'HTTP_STRIPE_SIGNATURE' => $signature], $body)->assertSuccessful();
+    }
 
     expect(app(NativeStateStore::class)->state($reference)['applied_version'])->toBe($applied['applied_version'])
-        ->and(app(LocalResolver::class)->for($reference)->limit('projects'))->toBe(10);
+        ->and(app(NativeStateStore::class)->state($reference)['completed_sequence'])->toBe(2)
+        ->and(app(NativeStateStore::class)->state($reference)['requested_sequence'])->toBe(2)
+        ->and(app(LocalResolver::class)->for($reference)->limit('projects'))->toBe(0)
+        ->and($owner->subscriptions()->first()->stripe_status)->toBe('active');
+    $fixture->assertReadOnly();
+});
+
+it('converges an omitted update from current provider state and reapplies it without changing grants', function () {
+    $owner = $this->organization();
+    $this->subscription($owner);
+    $fixture = new StripeFixture([
+        StripeFixture::page([StripeFixture::subscription()]), StripeFixture::page([StripeFixture::item()]),
+        StripeFixture::page([StripeFixture::subscription(status: 'past_due')]), StripeFixture::page([StripeFixture::item()]),
+        StripeFixture::page([StripeFixture::subscription(status: 'past_due')]), StripeFixture::page([StripeFixture::item()]),
+    ]);
+    app()->instance(StripeSubscriptionSource::class, new StripeSubscriptionSource($fixture->client()));
+    $reference = app(OwnerLocator::class)->reference($owner);
+    sweep();
+    expect(app(LocalResolver::class)->for($reference)->limit('projects'))->toBe(10);
+
+    // No updated webhook is delivered when the provider changes to past_due.
+    $this->travel(2)->hours();
+    [$exit] = sweep();
+    expect($exit)->toBe(0)
+        ->and(app(LocalResolver::class)->for($reference)->limit('projects'))->toBe(0)
+        ->and($owner->subscriptions()->first()->stripe_status)->toBe('active');
+    $version = app(NativeStateStore::class)->state($reference)['applied_version'];
+
+    $this->travel(2)->hours();
+    [$exit] = sweep();
+    expect($exit)->toBe(0)
+        ->and(app(NativeStateStore::class)->state($reference)['applied_version'])->toBe($version);
+    $fixture->assertReadOnly();
 });
 
 it('resumes a bounded scan across passes and refuses to call an incomplete scan complete', function () {
@@ -118,6 +157,9 @@ it('resumes a bounded scan across passes and refuses to call an incomplete scan 
     [$exit, $second] = sweep(['--limit' => 2, '--resume' => $first['run']]);
     expect($exit)->toBe(0)->and($second['complete'])->toBeTrue()->and($second['examined'])->toBe(3)
         ->and($second['run'])->toBe($first['run']);
+
+    [$exit, $completed] = sweep(['--resume' => $first['run']]);
+    expect($exit)->toBe(0)->and($completed)->toBe($second);
 });
 
 it('counts an unmappable owner without ending the scan or claiming a clean result', function () {
@@ -131,6 +173,28 @@ it('counts an unmappable owner without ending the scan or claiming a clean resul
     expect($exit)->toBe(1)->and($report['complete'])->toBeTrue()->and($report['examined'])->toBe(2)
         ->and($report['failed'])->toBe(2)->and($report['last_error'])->toBe('ambiguous_customer');
 });
+
+it('preserves an outstanding initial refresh and its retry or active claim across sweeps', function (bool $failed) {
+    Bus::fake();
+    $owner = $this->organization();
+    $reference = app(OwnerLocator::class)->reference($owner);
+    $store = app(NativeStateStore::class);
+    sweep();
+    $at = Date::now()->toDateTimeImmutable();
+    $claim = $store->claim($reference, $at);
+    if ($failed) {
+        $store->fail($claim, 'provider_rate_limited', $at);
+    }
+    $before = $store->state($reference);
+
+    [, $again] = sweep();
+    expect($again['requested'])->toBe(0)
+        ->and($store->state($reference))->toBe($before);
+    Bus::assertDispatchedTimes(RefreshOwner::class, 1);
+    if (! $failed) {
+        expect($store->complete($claim, BillingDecision::allowed('mapped', allowances: ['projects' => 10], planKey: 'pro'), 'v1', $at, $at))->toBeTrue();
+    }
+})->with(['active worker' => false, 'waiting for retry' => true]);
 
 it('still reports Cashier drift after convergence, because this package never repairs Cashier rows', function () {
     $owner = $this->organization();

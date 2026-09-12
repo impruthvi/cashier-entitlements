@@ -22,8 +22,8 @@
     },
     "suggest": {
         "laravel/cashier": "Required for billing diagnostics and background Stripe reconciliation (^16.8).",
-        "laravel/pennant": "Optional feature-store integration; M0 contains feasibility probes only.",
-        "masterix21/laravel-entitlements": "Optional license integration; M0 contains feasibility probes only."
+        "laravel/pennant": "Optional read-only entitlement store with explicit owner scope and snapshot semantics (^1.26).",
+        "masterix21/laravel-entitlements": "Optional license assignment driver for integer-keyed owners; see docs/m5-adapters.md for supported scope (1.3.1)."
     },
     "autoload": {
         "psr-4": {

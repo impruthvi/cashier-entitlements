@@ -34,10 +34,12 @@ itself and never calls Stripe on the scanning process.
 Three rules matter more than the flags:
 
 - **An incomplete scan proves nothing.** When a pass hits its limit, the run keeps its
-  cursor, stays incomplete and exits non-zero. Resume it with `--resume=<run id>` from the
-  previous report until a pass reports `complete`.
+  cursor, stays incomplete and exits non-zero. The next invocation automatically resumes
+  the oldest unfinished scan for that owner scope. Once all unfinished scans complete,
+  the following invocation starts a new scan. `--resume=<run id>` selects a specific run.
 - **Owners with outstanding work are skipped.** `entitlements:recover` already owns
-  re-delivery for them, so the sweep does not queue a second request on top.
+  re-delivery for them, including owners with no successful observation yet. The sweep
+  preserves their active claims and retry backoff instead of queuing another request.
 - **One bad owner does not end the scan.** An owner that cannot be mapped, most often two
   local records sharing one Stripe customer, is counted in `failed`, its reason code is
   reported, and the scan continues.
@@ -64,6 +66,10 @@ agrees is `entitlements:reconcile`'s question.
 
 Every field is a count, a timestamp or an existing sanitized reason code, so a report is
 safe to paste into an issue. Failure reasons are grouped by code with their counts.
+With `--owner-type`, a completed scan with failed owners still returns exit 1, including
+failures that prevented native state creation. Top-level `errors.sweep_owner_failed`
+counts failed scan attempts; `sweep.last_error` identifies the last reason. That reason
+is not attributed to every failed owner, since the scan does not retain per-reason counts.
 
 ## Scheduling convergence
 
@@ -81,26 +87,38 @@ safe to paste into an issue. Failure reasons are grouped by code with their coun
 Cron expressions only, so the schedule is explicit rather than inferred from a method name.
 Both tasks run `withoutOverlapping`, because two scans would fight over one cursor and
 duplicate provider reads.
+Every scheduled sweep continues its scope's unfinished scan; it does not restart at the
+first owner each time. Manual invocations for the same scope should also run serially.
 
 An unusable schedule is **ignored, not fatal**. Booting must not throw on a partial
 configuration key, or one typo would take the whole application down. The doctor reports
 the exact reason the schedule was skipped, so a silently missing sweep is still visible:
 `schedule_requires_owner_type`, `invalid_cron_expression`, `invalid_sweep_limit`,
 `invalid_stale_age` or `no_scheduled_convergence`.
+Expressions are validated with the cron parser used by Laravel's scheduler, including
+field counts and ranges. If either supplied expression is invalid, neither task is
+registered and doctor reports `invalid_cron_expression`.
 
 ## Verification
 
-Local as of 12 September 2026: 281 tests / 1057 assertions, separate PostgreSQL
+Local after the operational review fixes on 12 September 2026: 293 tests / 1147 assertions, separate PostgreSQL
 multi-process coverage (2 tests / 15 assertions), Larastan level 8, Pint and
-`composer validate --strict`.
+`composer validate --strict`. The full release gate passed all eight dependency-matrix
+rows and the fresh consumer install. These fixes require no additional migration.
 
 Convergence evidence is in
 [`tests/Integration/ConvergenceTest.php`](../tests/Integration/ConvergenceTest.php). It
-omits creation and deletion events individually, repeats a notification, delivers a stale
-update late, and takes its expected values from provider fixtures rather than the Cashier
+omits creation, update and deletion events individually, repeats a signed notification,
+delivers a stale update through the webhook endpoint and worker, and takes its expected
+values from provider fixtures rather than the Cashier
 rows under test, so a shared projection bug cannot make both sides agree. After a scan
 converges, the next pass requests nothing and the applied version does not move. Cashier
 drift is still reported afterwards, because this package never repairs Cashier rows.
+
+[`tests/Integration/ScheduledConvergenceTest.php`](../tests/Integration/ScheduledConvergenceTest.php)
+executes the registered sweep command across multiple batches and into the next scan.
+Schedule and doctor regressions also cover invalid cron ranges, partially invalid
+configuration and completed scans whose owners all failed before creating native state.
 
 Scaling and secret-free evidence is in
 [`tests/Performance/ScalingTest.php`](../tests/Performance/ScalingTest.php): one feature
@@ -133,6 +151,11 @@ It is read-only, creates no Stripe resource, refuses anything but a test key, an
 excluded from the default suite so credentials never enter pull-request CI. It answers the
 one question recorded fixtures cannot: does the pinned API version still return the shape
 this package reads.
+
+The populated sandbox suite passed on 13 September 2026: 3 tests / 27 assertions, no skips.
+Separate native lifecycle verification also passed, including real provider changes,
+missed-event convergence, queue recovery and local usage admission. See the
+[verification record](sandbox-validation.md) for cleanup and the remaining proof boundary.
 
 ## What M6 does not include
 

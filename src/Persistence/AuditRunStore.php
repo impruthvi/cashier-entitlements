@@ -61,6 +61,13 @@ final readonly class AuditRunStore
         return $run === null ? null : $this->normalize((array) $run);
     }
 
+    /** Continue the oldest unfinished scan in this scope before starting another one. */
+    public function unfinished(string $scope): ?string
+    {
+        return $this->runs()->where('scope', $scope)->whereNull('completed_at')
+            ->orderBy('started_at')->orderBy('id')->value('id');
+    }
+
     /**
      * @param  array<string, mixed>  $run
      * @return array<string, mixed>

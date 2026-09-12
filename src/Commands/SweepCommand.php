@@ -37,7 +37,7 @@ final class SweepCommand extends Command
                 throw new ReadFailure('invalid_audit_run');
             }
             $result = $this->laravel->make(SweepManager::class)->run($alias, $limit, $stale, $resume);
-            // An incomplete scan exits non-zero so a scheduler notices it must resume.
+            // An incomplete scan exits non-zero; the next invocation resumes its cursor.
             $report = ['schema_version' => 1, ...$result, 'errors' => [],
                 'exit_code' => $result['complete'] && $result['failed'] === 0 ? 0 : 1];
         } catch (ReadFailure $exception) {

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Impruthvi\CashierEntitlements\Reconciliation;
 
+use Cron\CronExpression;
+
 /**
  * A validated reading of the convergence schedule.
  *
@@ -30,9 +32,12 @@ final readonly class SchedulePlan
         $sweep = self::cron($config['sweep'] ?? null);
         $recover = self::cron($config['recover'] ?? null);
         $alias = $config['owner_type'] ?? null;
+        if ((($config['sweep'] ?? null) !== null && $sweep === null)
+            || (($config['recover'] ?? null) !== null && $recover === null)) {
+            return new self(reason: 'invalid_cron_expression');
+        }
         if ($sweep === null && $recover === null) {
-            return new self(reason: ($config['sweep'] ?? null) === null && ($config['recover'] ?? null) === null
-                ? 'no_scheduled_convergence' : 'invalid_cron_expression');
+            return new self(reason: 'no_scheduled_convergence');
         }
         if (! is_string($alias) || trim($alias) === '') {
             return new self(reason: 'schedule_requires_owner_type');
@@ -56,7 +61,8 @@ final readonly class SchedulePlan
 
     private static function cron(mixed $expression): ?string
     {
-        return is_string($expression) && preg_match('/^[\d*,\-\/ ]{1,100}$/D', trim($expression)) === 1
+        return is_string($expression) && strlen($expression) <= 100 && class_exists(CronExpression::class)
+            && CronExpression::isValidExpression(trim($expression))
             ? trim($expression) : null;
     }
 }

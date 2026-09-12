@@ -40,10 +40,17 @@ it('boots without registering anything when the schedule cannot be used', functi
     $this->refreshApplication();
 
     expect(scheduled())->toBe([]);
+    // Invalid configuration must not poison evaluation of the application's other tasks.
+    app(Schedule::class)->command('inspire')->everyMinute();
+    expect(app(Schedule::class)->dueEvents(app()))->toHaveCount(1);
 })->with([
     'nothing scheduled' => [['owner_type' => 'organization']],
     'no owner type' => [['sweep' => '0 * * * *']],
     'bad expression' => [['owner_type' => 'organization', 'sweep' => 'hourly']],
+    'invalid minute' => [['owner_type' => 'organization', 'sweep' => '99 * * * *']],
+    'missing fields' => [['owner_type' => 'organization', 'sweep' => '* * *']],
+    'bad sweep with valid recovery' => [['owner_type' => 'organization', 'sweep' => 'hourly', 'recover' => '*/5 * * * *']],
+    'valid sweep with bad recovery' => [['owner_type' => 'organization', 'sweep' => '0 * * * *', 'recover' => 'hourly']],
     'bad limit' => [['owner_type' => 'organization', 'sweep' => '0 * * * *', 'sweep_limit' => 0]],
     'not an array' => [[]],
 ]);

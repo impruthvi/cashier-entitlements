@@ -80,8 +80,10 @@ Read [M0 results and open gates](docs/m0-compatibility.md) before building an ad
 Passing characterization tests document upstream behavior, including unsafe behavior;
 they are not proof of a production-ready integration.
 
-- Masterix assignment and consumption are not idempotent. Over-capacity downgrades
-  fail while the previous allowance remains active. Its production adapter remains gated.
+- The Masterix adapter owns one licence group per integer-keyed owner and makes assignment
+  retries idempotent. Over-capacity downgrades abort refresh while the previous allowance
+  remains active. Custom models, connections and adapter concurrency remain uncertified;
+  see the [M5 supported scope](docs/m5-adapters.md).
 - Pennant caches values above a custom driver. Explicit evaluation boundaries must
   flush that cache. Numeric `value()` is distinct from boolean `active()`.
 - Cashier's `active()` is not the future entitlement policy.
@@ -89,10 +91,17 @@ they are not proof of a production-ready integration.
 The test-only driver in `tests/Support` is not exported through runtime autoloading.
 No optional provider or Pennant store is registered automatically by this package.
 
-## Next milestone
+## Before release
 
-M5: production Masterix and Pennant adapters, behind their safety gates.
-Resumable operational sweeps and the full health/doctor surface remain later work.
-Usage is not reported to Stripe metered billing, and counters are never pruned.
+M0–M6 are implemented. Scheduled sweeps resume unfinished scans automatically, pending
+initial refreshes remain owned by recovery, invalid cron expressions are reported, and
+doctor warns when a completed scan contains failed owners.
+
+The release gate and populated Stripe sandbox validation passed; see the
+[13 September verification record](docs/sandbox-validation.md) for tested scenarios and
+remaining boundaries. Public webhook delivery and deployment-specific behavior still
+need validation in the intended host application before a production rollout.
+Usage is not reported to Stripe metered billing, counters are never pruned, and aggregate
+usage listing remains unbuilt.
 
 MIT licensed; see [LICENSE.md](LICENSE.md).
