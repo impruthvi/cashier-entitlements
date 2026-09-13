@@ -1,12 +1,19 @@
-# Cashier Entitlements
+<h1 align="center">cashier-entitlements</h1>
+
+<p align="center">
+  <strong>Answer what a customer can access from your own database, not from Stripe.</strong>
+</p>
+
+
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/impruthvi/cashier-entitlements.svg?style=flat-square)](https://packagist.org/packages/impruthvi/cashier-entitlements)
+[![Tests](https://github.com/impruthvi/cashier-entitlements/actions/workflows/tests.yml/badge.svg)](https://github.com/impruthvi/cashier-entitlements/actions?query=workflow%3ATests+branch%3Amain)
+[![Total Downloads](https://img.shields.io/packagist/dt/impruthvi/cashier-entitlements.svg?style=flat-square)](https://packagist.org/packages/impruthvi/cashier-entitlements)
 
 Local entitlement resolution and background billing reconciliation for Laravel Cashier.
 
 Answer "what can this organization do right now?" from your own database — no Stripe call
 in the request path — and repair that answer in background work when a webhook never
 arrives.
-
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.md)
 
 ## The problem
 
