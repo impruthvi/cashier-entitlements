@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="art/logo.svg" alt="Cashier Entitlements" width="128">
+</p>
+
 <h1 align="center">cashier-entitlements</h1>
 
 <p align="center">
