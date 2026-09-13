@@ -1,8 +1,14 @@
 {
     "name": "impruthvi/cashier-entitlements",
-    "description": "Local entitlement resolution and background billing reconciliation for Laravel Cashier (under development).",
+    "description": "Local entitlement resolution and background billing reconciliation for Laravel Cashier.",
     "type": "library",
     "license": "MIT",
+    "keywords": ["laravel", "cashier", "stripe", "entitlements", "billing", "usage", "limits", "saas"],
+    "homepage": "https://github.com/impruthvi/cashier-entitlements",
+    "support": {
+        "issues": "https://github.com/impruthvi/cashier-entitlements/issues",
+        "source": "https://github.com/impruthvi/cashier-entitlements"
+    },
     "require": {
         "php": "^8.3",
         "illuminate/contracts": "^12.0 || ^13.0",

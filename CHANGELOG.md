@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.1.0 — 2026-09-13
+
+First tagged release. Local entitlement resolution and background billing
+reconciliation for Laravel Cashier, verified against a live Stripe sandbox.
+
 - Fix scheduled sweep starvation by automatically resuming unfinished scans in the owner scope.
 - Preserve pending initial refreshes, active worker claims and retry backoff during sweeps.
 - Validate cron field counts/ranges and reject partially invalid convergence schedules.
