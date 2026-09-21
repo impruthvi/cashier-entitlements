@@ -202,7 +202,7 @@ final class CashierEntitlementsServiceProvider extends PackageServiceProvider
         }
         foreach ($meters as $feature => $rule) {
             if (! is_string($feature) || ! is_string($rule)
-                || (! in_array($rule, ['calendar_day', 'calendar_month'], true) && ! str_starts_with($rule, 'billing:'))
+                || (! in_array($rule, ['lifetime', 'calendar_day', 'calendar_month'], true) && ! str_starts_with($rule, 'billing:'))
                 || (str_starts_with($rule, 'billing:') && trim(substr($rule, 8)) === '')) {
                 throw new ReadFailure('invalid_meter_rules');
             }

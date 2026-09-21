@@ -148,15 +148,19 @@ Two rules the callback must respect: use only the supplied connection (external 
 are not covered by the rollback), and stay free of non-transactional side effects — the
 transaction retries up to three times on deadlock.
 
-Declare a reset rule for every metered feature. There is no default:
+Declare a period rule for every metered feature. There is no default:
 
 ```php
 'meters' => [
-    'projects'  => 'calendar_month',
+    'projects'  => 'lifetime',
     'exports'   => 'calendar_day',
     'seats'     => 'billing:price_pro',  // exact Stripe period boundaries
 ],
 ```
+
+`lifetime` never resets. It is suitable for append-only stock such as projects only while
+every creation is metered and deletion does not return allowance. Calendar rules reset in
+UTC; billing rules use the observed Stripe period for the named price.
 
 ### 5. Keep it current
 
@@ -257,7 +261,7 @@ from the default suite and never enter pull-request CI.
 CASHIER_ENTITLEMENTS_SANDBOX_KEY=sk_test_... bash scripts/test-sandbox.sh
 ```
 
-## Known limits at 0.1.0
+## Known limits at 0.2.0
 
 Stated plainly so you can judge fit:
 
@@ -266,6 +270,7 @@ Stated plainly so you can judge fit:
 - MySQL locking behavior is unverified; PostgreSQL and SQLite are covered.
 - Usage is not reported to Stripe metered billing.
 - Usage counters and receipts are never pruned.
+- Lifetime meters have no decrement or release operation; deletion does not return allowance.
 - Aggregate cross-owner usage listing is not built.
 - One active catalog version per billing context. Mixed-version workers are not a
   supported deployment mode.

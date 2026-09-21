@@ -81,7 +81,7 @@ it('serializes concurrent PostgreSQL admissions so a one-unit limit admits exact
         }
     }
 
-    $usage = new NativeUsage($store, new PriceCatalog('v1', [], ['projects' => 1]), new MeterPeriods(['projects' => 'calendar_day']));
+    $usage = new NativeUsage($store, new PriceCatalog('v1', [], ['projects' => 1]), new MeterPeriods(['projects' => 'lifetime']));
     expect($usage->usage($owner, 'projects', $at))->toBe(1)
         ->and(DB::table('projects')->pluck('id')->all())->toBe(['holder']);
 });

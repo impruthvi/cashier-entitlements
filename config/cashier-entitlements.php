@@ -11,7 +11,7 @@ return [
     'connection' => null,
     // Choose exactly one: ['max_stale_age' => 3600] or ['retain_last_known' => true].
     'freshness' => [],
-    // Usage meter reset rule per numeric feature: 'calendar_day', 'calendar_month' or 'billing:<price_id>'.
+    // Usage period per numeric feature: 'lifetime', 'calendar_day', 'calendar_month' or 'billing:<price_id>'.
     'meters' => [],
     // Consult the audited override ledger during local resolution. Costs one extra query per resolve.
     'overrides' => false,

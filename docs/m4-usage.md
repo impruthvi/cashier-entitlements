@@ -26,11 +26,12 @@ The billing-period migration preserves a table already created by an early M4 in
 Do not force-republish or re-run old migrations. Rolling back the new billing-period
 migration deletes period history; treat rollback as destructive and back up first.
 
-Declare a reset rule for every metered feature, and opt into the override ledger only if
+Declare a period rule for every metered feature, and opt into the override ledger only if
 you use it:
 
 ```php
 'meters' => [
+    'projects' => 'lifetime',
     'api_calls' => 'calendar_month',
     'exports' => 'calendar_day',
     'seats' => 'billing:price_pro',
@@ -41,6 +42,11 @@ you use it:
 There is no default rule. Recording usage for a feature with no rule throws `ReadFailure`
 with `missing_meter_period`, rather than guessing a period and mismeasuring the customer.
 An invalid rule is rejected when `MeterPeriods` is resolved, not at the first increment.
+
+`lifetime` maps every occurrence to one fixed period, so its total never resets. It is
+appropriate for append-only stock only while every creation is metered and deletion does
+not return allowance. The ledger remains append-only: there is no decrement or release
+operation in this version.
 
 Calendar periods are computed in UTC, so a customer in another timezone sees their quota
 reset at UTC midnight or on the first UTC day of the month. A `billing:<price_id>` rule

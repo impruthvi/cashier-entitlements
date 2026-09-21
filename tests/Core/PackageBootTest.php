@@ -76,8 +76,16 @@ it('rejects an unusable meter rule instead of silently metering the wrong period
         expect(fn () => app()->make(MeterPeriods::class))->toThrow(ReadFailure::class, 'invalid_meter_rules');
     }
 
-    config(['cashier-entitlements.meters' => ['projects' => 'calendar_month', 'seats' => 'billing:price_pro']]);
-    expect(app()->make(MeterPeriods::class)->rules)->toBe(['projects' => 'calendar_month', 'seats' => 'billing:price_pro']);
+    config(['cashier-entitlements.meters' => [
+        'projects' => 'lifetime',
+        'api_calls' => 'calendar_month',
+        'seats' => 'billing:price_pro',
+    ]]);
+    expect(app()->make(MeterPeriods::class)->rules)->toBe([
+        'projects' => 'lifetime',
+        'api_calls' => 'calendar_month',
+        'seats' => 'billing:price_pro',
+    ]);
 });
 
 it('leaves the override ledger out of resolution until an installation opts in', function () {

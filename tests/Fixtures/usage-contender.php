@@ -19,7 +19,7 @@ $capsule->addConnection(['driver' => 'pgsql', 'host' => $argv[1], 'database' => 
     'username' => get_current_user(), 'password' => '', 'charset' => 'utf8', 'prefix' => '', 'sslmode' => 'disable'], 'm4pg');
 $store = new NativeStateStore($capsule->getConnection('m4pg'));
 $catalog = new PriceCatalog('v1', [], ['projects' => 1]);
-$usage = new NativeUsage($store, $catalog, new MeterPeriods(['projects' => 'calendar_day']));
+$usage = new NativeUsage($store, $catalog, new MeterPeriods(['projects' => 'lifetime']));
 $resolver = new LocalResolver($store, $catalog, new FreshnessPolicy(retainLastKnown: true));
 $owner = new OwnerReference('organization', 44, 'm4pg');
 $at = new DateTimeImmutable('2026-09-12T12:00:00Z');

@@ -53,7 +53,7 @@ if ($result->status !== DecisionStatus::Allowed || $result->allowances !== ['pro
 config(['database.default' => 'sqlite', 'database.connections.sqlite' => [
     'driver' => 'sqlite', 'database' => ':memory:', 'prefix' => '',
 ], 'cashier-entitlements.freshness' => ['max_stale_age' => 60],
-    'cashier-entitlements.meters' => ['projects' => 'calendar_day'], 'cashier-entitlements.overrides' => true]);
+    'cashier-entitlements.meters' => ['projects' => 'lifetime'], 'cashier-entitlements.overrides' => true]);
 if ($kernel->call('vendor:publish', ['--tag' => 'cashier-entitlements-migrations', '--force' => true]) !== 0
     || $kernel->call('migrate', ['--force' => true]) !== 0) {
     throw new RuntimeException('Native migration publish or execution failed.');
@@ -89,7 +89,8 @@ if ($receipt->total !== 1 || $usage->usage($owner, 'projects', $at) !== 1
 $access = $resolver->for($owner, $at);
 if ($access->usage('projects') !== 1 || $access->remaining('projects') !== 1
     || $access->record('projects', 2, 'measured-overage')->total !== 3
-    || $access->remaining('projects') !== -1) {
+    || $access->remaining('projects') !== -1
+    || $usage->usage($owner, 'projects', $at->modify('+1 year')) !== 3) {
     throw new RuntimeException('Owner-scoped usage or remaining failed on a fresh install.');
 }
 

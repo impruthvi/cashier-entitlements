@@ -28,6 +28,12 @@ final readonly class MeterPeriods
 
             return new UsagePeriod(new DateTimeImmutable('@'.$periods[0]->period_start), new DateTimeImmutable('@'.$periods[0]->period_end));
         }
+        if ($rule === 'lifetime') {
+            return new UsagePeriod(
+                new DateTimeImmutable('1970-01-01T00:00:00.000000Z'),
+                new DateTimeImmutable('9999-12-31T23:59:59.999999Z'),
+            );
+        }
         if (! in_array($rule, ['calendar_day', 'calendar_month'], true)) {
             throw new ReadFailure('missing_meter_period');
         }

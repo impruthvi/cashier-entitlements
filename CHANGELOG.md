@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.2.0 — 2026-09-21
+
+- Add a non-resetting `lifetime` usage period for append-only stock limits.
+- Validate `lifetime` meter configuration during container resolution.
+- Prove lifetime rollover, admission, PostgreSQL contention and fresh-consumer behavior.
+- Document that lifetime meters do not release allowance when domain records are deleted.
+
 ## 0.1.0 — 2026-09-13
 
 First tagged release. Local entitlement resolution and background billing

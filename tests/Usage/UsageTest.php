@@ -109,6 +109,43 @@ it('counts an operation once and returns its original period and result after mi
         ->and($usage->usage($owner, 'projects', $after))->toBe(0);
 });
 
+it('keeps lifetime usage and admission in one period across calendar boundaries', function () {
+    $store = new NativeStateStore(DB::connection());
+    $catalog = new PriceCatalog('v1', [], ['projects' => 1]);
+    $usage = new NativeUsage($store, $catalog, new MeterPeriods(['projects' => 'lifetime']));
+    $resolver = new LocalResolver($store, $catalog, new FreshnessPolicy(retainLastKnown: true));
+    $owner = new OwnerReference('organization', 42, 'testing');
+    $createdAt = new DateTimeImmutable('2026-09-12T12:00:00Z');
+    $yearsLater = new DateTimeImmutable('2031-01-01T00:00:00Z');
+    $store->request($owner, $createdAt);
+    $store->complete($store->claim($owner, $createdAt), BillingDecision::allowed('mapped', allowances: ['projects' => 1]), 'v1', $createdAt, $createdAt);
+    Schema::create('projects', fn ($table) => $table->string('id')->primary());
+
+    $receipt = $usage->admit(
+        $owner,
+        'projects',
+        1,
+        'first-project',
+        $resolver,
+        fn ($db, $usageReceipt) => $db->table('projects')->insert(['id' => $usageReceipt->id]),
+        $createdAt,
+    );
+
+    expect($receipt->period->start->format(DATE_ATOM))->toBe('1970-01-01T00:00:00+00:00')
+        ->and($receipt->period->end->format(DATE_ATOM))->toBe('9999-12-31T23:59:59+00:00')
+        ->and($usage->usage($owner, 'projects', $yearsLater))->toBe(1)
+        ->and(fn () => $usage->admit(
+            $owner,
+            'projects',
+            1,
+            'second-project',
+            $resolver,
+            fn ($db, $usageReceipt) => $db->table('projects')->insert(['id' => $usageReceipt->id]),
+            $yearsLater,
+        ))->toThrow(LimitExceeded::class)
+        ->and(DB::table('projects')->count())->toBe(1);
+});
+
 it('rejects conflicting retries without changing usage and routes explicit late occurrences in UTC', function () {
     $usage = new NativeUsage(new NativeStateStore(DB::connection()), new PriceCatalog('v1', [], ['projects' => 2]), new MeterPeriods(['projects' => 'calendar_month']));
     $owner = new OwnerReference('organization', 42, 'testing');
