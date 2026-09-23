@@ -11,7 +11,6 @@ use Impruthvi\CashierEntitlements\Billing\OwnerReference;
 use Impruthvi\CashierEntitlements\Billing\PriceCatalog;
 use Impruthvi\CashierEntitlements\Persistence\NativeStateStore;
 use Impruthvi\CashierEntitlements\Resolution\FeatureTypeMismatch;
-use Impruthvi\CashierEntitlements\Resolution\LocalResolver;
 
 final readonly class NativeUsage
 {
@@ -23,7 +22,7 @@ final readonly class NativeUsage
     }
 
     /** @param callable(Connection, UsageReceipt): void $create Domain writes must use this connection; no external side effects. */
-    public function admit(OwnerReference $owner, string $feature, int $quantity, string $idempotencyKey, LocalResolver $resolver, callable $create, ?DateTimeImmutable $at = null): UsageReceipt
+    public function admit(OwnerReference $owner, string $feature, int $quantity, string $idempotencyKey, AdmissionResolver $resolver, callable $create, ?DateTimeImmutable $at = null): UsageReceipt
     {
         $resolver->assertConnection($owner, $this->store->database($owner));
 
@@ -31,7 +30,7 @@ final readonly class NativeUsage
     }
 
     /** @param (callable(Connection, UsageReceipt): void)|null $create */
-    private function increment(OwnerReference $owner, string $feature, int $quantity, string $idempotencyKey, ?DateTimeImmutable $at, ?DateTimeImmutable $occurredAt, ?LocalResolver $resolver = null, ?callable $create = null): UsageReceipt
+    private function increment(OwnerReference $owner, string $feature, int $quantity, string $idempotencyKey, ?DateTimeImmutable $at, ?DateTimeImmutable $occurredAt, ?AdmissionResolver $resolver = null, ?callable $create = null): UsageReceipt
     {
         $this->numeric($feature);
         if ($quantity < 1 || trim($idempotencyKey) === '' || strlen($idempotencyKey) > 255) {
@@ -58,7 +57,7 @@ final readonly class NativeUsage
             $counter = $db->table('cashier_entitlement_usage_counters')->where('id', $this->counterId($ownerId, $feature, $period));
             $current = (int) ($counter->value('total') ?? 0);
             if ($resolver !== null) {
-                $limit = $resolver->for($owner, $at)->limit($feature);
+                $limit = $resolver->limit($owner, $feature, $at);
                 if ($limit !== null && ($current > $limit || $quantity > $limit - $current)) {
                     throw new LimitExceeded($feature);
                 }

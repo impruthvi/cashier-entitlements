@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Database\Connection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Impruthvi\CashierEntitlements\Billing\BillingDecision;
@@ -14,6 +15,7 @@ use Impruthvi\CashierEntitlements\Resolution\FreshnessPolicy;
 use Impruthvi\CashierEntitlements\Resolution\LocalResolver;
 use Impruthvi\CashierEntitlements\Resolution\UnknownFeature;
 use Impruthvi\CashierEntitlements\Tests\TestCase;
+use Impruthvi\CashierEntitlements\Usage\AdmissionResolver;
 use Impruthvi\CashierEntitlements\Usage\IdempotencyConflict;
 use Impruthvi\CashierEntitlements\Usage\LimitExceeded;
 use Impruthvi\CashierEntitlements\Usage\MeterPeriods;
@@ -53,6 +55,37 @@ it('atomically admits domain work once and rolls back both usage and work on fai
     expect(fn () => $usage->record($owner, 'projects', 1, 'one', $at))->toThrow(IdempotencyConflict::class);
     $usage->record($owner, 'projects', 2, 'measured-overage', $at);
     expect($usage->usage($owner, 'projects', $at))->toBe(3);
+});
+
+it('admits against an application effective allowance resolver', function () {
+    $store = new NativeStateStore(DB::connection());
+    $catalog = new PriceCatalog('v1', [], ['projects' => 10]);
+    $usage = new NativeUsage($store, $catalog, new MeterPeriods(['projects' => 'lifetime']));
+    $local = new LocalResolver($store, $catalog, new FreshnessPolicy(retainLastKnown: true));
+    $owner = new OwnerReference('organization', 42, 'testing');
+    $at = new DateTimeImmutable('2026-09-12T12:00:00Z');
+    Schema::create('projects', fn ($table) => $table->string('id')->primary());
+    $resolver = new readonly class($local) implements AdmissionResolver
+    {
+        public function __construct(private LocalResolver $local) {}
+
+        public function assertConnection(OwnerReference $owner, Connection $connection): void
+        {
+            $this->local->assertConnection($owner, $connection);
+        }
+
+        public function limit(OwnerReference $owner, string $feature, DateTimeImmutable $at): ?int
+        {
+            return 1;
+        }
+    };
+    $create = fn ($db, $receipt) => $db->table('projects')->insert(['id' => $receipt->id]);
+
+    $usage->admit($owner, 'projects', 1, 'first', $resolver, $create, $at);
+
+    expect(fn () => $usage->admit($owner, 'projects', 1, 'second', $resolver, $create, $at))
+        ->toThrow(LimitExceeded::class)
+        ->and(DB::table('projects')->count())->toBe(1);
 });
 
 it('retains observed billing item periods across refreshes and refuses to guess missing boundaries', function () {

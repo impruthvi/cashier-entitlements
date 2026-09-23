@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.2.1 — 2026-09-24
+
+- Allow applications to provide their effective numeric allowance resolver to atomic usage admission.
+
 ## 0.2.0 — 2026-09-21
 
 - Add a non-resetting `lifetime` usage period for append-only stock limits.

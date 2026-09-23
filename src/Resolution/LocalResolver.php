@@ -13,10 +13,11 @@ use Impruthvi\CashierEntitlements\Billing\PriceMapper;
 use Impruthvi\CashierEntitlements\Overrides\NativeOverrides;
 use Impruthvi\CashierEntitlements\Persistence\NativeStateStore;
 use Impruthvi\CashierEntitlements\Reconciliation\ReadFailure;
+use Impruthvi\CashierEntitlements\Usage\AdmissionResolver;
 use Impruthvi\CashierEntitlements\Usage\MeterPeriods;
 use Impruthvi\CashierEntitlements\Usage\NativeUsage;
 
-final readonly class LocalResolver
+final readonly class LocalResolver implements AdmissionResolver
 {
     public function __construct(private NativeStateStore $store, private PriceCatalog $catalog, private FreshnessPolicy $freshness, private ?NativeOverrides $overrides = null, private MeterPeriods $meters = new MeterPeriods) {}
 
@@ -47,6 +48,11 @@ final readonly class LocalResolver
         if ($this->store->database($owner) !== $connection) {
             throw new ReadFailure('admission_connection_mismatch');
         }
+    }
+
+    public function limit(OwnerReference $owner, string $feature, DateTimeImmutable $at): ?int
+    {
+        return $this->for($owner, $at)->limit($feature);
     }
 
     /** @return array<string, bool|int|null> One local query for a batch of feature values. */
